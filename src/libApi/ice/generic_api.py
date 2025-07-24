@@ -1,15 +1,11 @@
-import requests, os
+import requests
 from datetime import datetime
-from dotenv import load_dotenv
 
+from libApi.config.parameters import API_LOG_REQUEST_FILE_PATH
 from urllib3.exceptions import InsecureRequestWarning
 
 # Suppress only the InsecureRequestWarning from urllib3 needed for insecure connections
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
-load_dotenv()
-API_LOG_REQUEST_FILE_PATH=os.getenv("API_LOG_REQUEST_FILE_PATH")
-
 
 class GenericApi :
 

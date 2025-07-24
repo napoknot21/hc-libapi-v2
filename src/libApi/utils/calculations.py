@@ -1,8 +1,7 @@
 from datetime import datetime, timedelta
+from libApi.config.parameters import FILE_ID_CALCULATION_PATH
 
-#from libApi.config.parameters import *
-
-def write_to_file (date, ID, calculation_type, fund="HV", filename=fileId) -> None :
+def write_to_file (date, ID, calculation_type, fund="HV", filename=FILE_ID_CALCULATION_PATH) -> None :
     """
     
     """
@@ -22,7 +21,7 @@ def write_to_file (date, ID, calculation_type, fund="HV", filename=fileId) -> No
         file.write(f"{date} - ID: {ID} - Type: {calculation_type} - Fund: {fund}\n")
 
 
-def check_duplicate (date, calculation_type, fund, filename=fileId) :
+def check_duplicate (date, calculation_type, fund, filename=FILE_ID_CALCULATION_PATH) :
     """
     
     """
@@ -59,7 +58,7 @@ def split_line (input_string : str) :
     return date, id_str, type_str, fund
 
 
-def read_id_from_file (date, calculation_type, fund="HV", filename=fileId, timeSensitive=True) :
+def read_id_from_file (date, calculation_type, fund="HV", filename=FILE_ID_CALCULATION_PATH, timeSensitive=True) :
     """
     Returns the ID of calculationtype and fund
     """
@@ -87,7 +86,7 @@ def read_id_from_file (date, calculation_type, fund="HV", filename=fileId, timeS
     return None
 
 
-def get_last_run_time (calculation_type, fund="HV", filename=fileId) :
+def get_last_run_time (calculation_type, fund="HV", filename=FILE_ID_CALCULATION_PATH) :
     """
     
     """
@@ -119,7 +118,7 @@ def get_last_run_time (calculation_type, fund="HV", filename=fileId) :
     return last_run_time, last_run_id
 
 
-def get_closest_date_of_run_MV (target_date, filename=fileId) :
+def get_closest_date_of_run_MV (target_date, filename=FILE_ID_CALCULATION_PATH) :
     """
     
     """

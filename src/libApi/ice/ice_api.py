@@ -1,22 +1,6 @@
-import os
-from dotenv import load_dotenv
-
 from libApi.ice.generic_api import GenericApi
 from libApi.utils.calculations import *
-
-# GLOBAL INFORMATION VARIABLES
-
-ICE_HOST=os.getenv("ICE_HOST")
-ICE_AUTH=os.getenv("ICE_AUTH")
-
-ICE_USERNAME=os.getenv("ICE_USERNAME")
-ICE_PASSWORD=os.getenv("ICE_PASSWORD")
-
-ICE_URL_SEARCH_TRADES=os.getenv("ICE_URL_SEARCH_TRADES")
-ICE_URL_GET_TRADES=os.getenv("ICE_URL_GET_TRADES")
-ICE_URL_CALC_RES=os.getenv("ICE_URL_CALC_RES")
-ICE_URL_BIL_IM_CALC=os.getenv("ICE_URL_BIL_IM_CALC")
-ICE_URL_TRADE_ADD=os.getenv("ICE_URL_TRADE_ADD")
+from libApi.config.parameters import *
 
 
 class IceAPI (GenericApi) :

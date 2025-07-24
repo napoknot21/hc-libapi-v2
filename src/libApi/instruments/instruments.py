@@ -1,4 +1,4 @@
-CCYS_ORDER=['EUR', 'USD', 'CHF', 'CAD', 'JPY', 'GBP', 'SEK', 'NOK']
+from libApi.config.parameters import CCYS_ORDER
 
 
 def find_ccy (ccy : str) :
