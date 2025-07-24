@@ -10,6 +10,7 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 load_dotenv()
 API_LOG_REQUEST_FILE_PATH=os.getenv("API_LOG_REQUEST_FILE_PATH")
 
+
 class GenericApi :
 
     def __init__ (self, api_host : str, auth_url : str) :

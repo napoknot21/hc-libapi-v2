@@ -1,7 +1,8 @@
 import os
 from dotenv import load_dotenv
 
-from lib.clients.generic_api import GenericApi
+from libApi.ice.generic_api import GenericApi
+from libApi.utils.calculations import *
 
 # GLOBAL INFORMATION VARIABLES
 
