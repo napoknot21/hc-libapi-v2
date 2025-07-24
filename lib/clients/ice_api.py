@@ -273,3 +273,28 @@ class IceAPI (GenericApi) :
         Returns :
 
         """
+        return None
+    
+
+    def get_total_mv_data (self, date) -> dict :
+        """
+        Get total market value for a specific date
+
+        Args :
+        - date : date -> The date in the format "2020-09-30 00:00:00".
+
+        Returns:
+        - calculation : dict -> Result of the total market value calculation.
+        """
+        calculation_id = read_id_from_file(date, "MV", timeSensitive=False)
+
+        if not calculation_id : 
+
+            print("[*] Run calculation in ICE for date", date)
+            calculation_id = self.run_mv_greeks(date=date[:-9])["calculationId"]
+
+            write_to_file(date, calculation_id, "MV")
+
+        calculation = self.get_calc_results(calculation_id)
+
+        return calculation
