@@ -136,7 +136,7 @@ class GenericApi :
             print(f"[-] Error making POST request: {e}")
 
 
-    def log_request (self, method, endpoint) :
+    def log_request (self, method : str, endpoint : str) :
         """
         Log the API request to a text file.
 

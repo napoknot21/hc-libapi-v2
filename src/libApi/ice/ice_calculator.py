@@ -108,12 +108,12 @@ class IceCalculator (GenericApi) :
         return im
     
 
-    def get_total_mv_data (self, date) -> dict :
+    def get_total_mv_data (self, date : str) -> dict :
         """
         Get total market value for a specific date
 
         Args :
-        - date : date -> The date in the format "2020-09-30 00:00:00".
+        - date : str -> The date in the format "2020-09-30 00:00:00".
 
         Returns:
         - calculation : dict -> Result of the total market value calculation.
