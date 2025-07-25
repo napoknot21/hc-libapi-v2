@@ -1,5 +1,6 @@
 # Heroics Capital - LibAPI
 
+Internal API library for API connexions and data fetch
 
 ## How to use / import the library ?
 
@@ -11,7 +12,7 @@ sys.path.append(ABSOLUTE_PATH_LIBAPI)
 > `ABSOLUTE_PATH_LIBAPI` : str -> The absolute path of the libApi location
 
 *Example*
-```
+```python
 import pandas as pd
 """
 Other imports...
@@ -25,5 +26,4 @@ from libApi.pricers.fx import PricerFX
 
 ice_api = IceCalculator()
 pricer_fx = PricerFx()
-
 ```
