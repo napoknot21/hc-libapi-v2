@@ -7,11 +7,11 @@ from libApi.config.parameters import columnsInPricer, FX_PRICER_SOLVE_PATH
 
 from libApi.instruments.instruments import (
 
-    get_instruments_samestrike_sell_put_call_fx, 
-    get_instruments_2_strikes_sell_put_call_fx, 
-    get_instruments_sell_cs_fx, 
-    get_instruments_sell_ps_fx, 
-    get_instruments_put_fx, 
+    get_instruments_samestrike_sell_put_call_fx,
+    get_instruments_2_strikes_sell_put_call_fx,
+    get_instruments_sell_cs_fx,
+    get_instruments_sell_ps_fx,
+    get_instruments_put_fx,
     get_instruments_call_fx
 
 )

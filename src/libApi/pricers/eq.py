@@ -97,7 +97,7 @@ def get_dates (start_date : str, end_date : str, frequency : str) -> list[str] :
     return date_list
 
 
-class PriceEQ (Pricer) :
+class PricerEQ (Pricer) :
 
 
     def __init__ (self) -> None :
@@ -292,7 +292,7 @@ class PriceEQ (Pricer) :
         return payload
     
 
-    def get_strike (self, BBG_ticker, opt_type, strike : str, expiry : str, valuation_date=datetime.now().strftie("%Y-%m-%d")) :
+    def get_strike (self, BBG_ticker, opt_type, strike : str, expiry : str, valuation_date=datetime.now().strftime("%Y-%m-%d")) :
         """
         Function that takes an option and returns the strike based on a strike in the format of '100%'
         The function will return the strike based on the spot for the start date
@@ -493,3 +493,22 @@ class PriceEQ (Pricer) :
         
         # return the equity curve
         return all_prices
+    
+"""
+pricer = PricerEQ()
+
+# Backtest strategy
+all_prices = pricer.equity_curve(
+    direction='Buy',
+    BBGTicker='BNP FP',
+    opt_type='Put', 
+    strike='100%', 
+    notional=1_000_000, 
+    expiry='2023-12-23', 
+    start_date='2023-01-01', 
+    end_date='2023-12-23', 
+    frequency='Month'
+)
+print(all_prices.describe)
+print(all_prices)
+"""
