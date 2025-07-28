@@ -98,7 +98,7 @@ class GenericApi :
 
         except requests.exceptions.HTTPError as e :
 
-            print(f"[-] GET Request Error: {e.response.status_code} - {e.response.text}")
+            print(f"\n[-] GET Request Error: \n\t{e.response.status_code} - {e.response.text}\n")
         
         except requests.exceptions.RequestException as e :
 

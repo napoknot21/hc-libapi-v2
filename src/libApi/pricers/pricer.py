@@ -34,7 +34,7 @@ class Pricer :
         logs.to_csv(PRICING_LOG_FILE_PATH, index=False)
 
 
-    def treat_json_response_pricer (self, json_response, instruments) :
+    def treat_json_response_pricer (self, json_response, instruments) -> pd.DataFrame :
         """
         
         """
@@ -116,3 +116,75 @@ class Pricer :
             start = end
         
         return parts
+    
+
+    def get_dates (self, start_date : str, end_date : str, frequency="Day") :
+        """
+        Function that returns a list of dates based on the start date, end date and frequency
+
+        Args:
+            start_date (str): start date in format 'YYYY-MM-DD'
+            end_date (str): end date in format 'YYYY-MM-DD'
+            frequency (str): 'Day', 'Week', 'Month', 'Quarter', 'Year' represents the frequency of the equity curve
+            
+        Returns:
+            list: list of dates in format 'YYYY-MM-DD'
+        """
+        start = self._valide_date(start_date)
+        end = self._valide_date(end_date)
+
+        if start is None or end is None :
+            raise ValueError(f"[-] Invalid date format. Must be 'YYYY-MM-DD'.")
+        
+        if start > end :
+            raise ValueError("[-] Start_date must be before or equal to end_date.")
+
+        # Map the frequency string to pandas offset alias
+        freq_map = {
+            'Day' : 'D',
+            'Week' : 'W',
+            'Month' : 'ME', # Month end
+            'Quarter' : 'Q',
+            'Year' : 'Y'
+        }
+
+        pd_frequency = freq_map.get(frequency)
+
+        if pd_frequency is None :
+            raise ValueError(f"[-] Invalid frequency: {frequency}. Choose from 'Day', 'Week', 'Month', 'Quarter', 'Year'.")
+        
+        # Generate the date range using pandas
+        date_range = pd.date_range(start=start, end=end, freq=pd_frequency)
+
+        # Filter out weekends for non-business day frequencies
+        if frequency == 'Day' :
+            date_range = date_range[~date_range.weekday.isin([5, 6])]
+
+        # Convert the date range to a list of strings in the format 'YYYY-MM-DD'
+        date_list = date_range.strftime('%Y-%m-%d').tolist()
+
+        # Add start date if it is not in the dates
+        if start_date < date_list[0] :
+            date_list.insert(0, start_date)
+
+        return date_list
+    
+
+    def _valide_date (self, date_str : str) -> datetime :
+        """
+        Valide date format and convert to datime
+
+        Args:
+            date_str (str) : The string date format to check
+
+        Return:
+            
+        """
+        try :
+
+            return datetime.strptime(date_str, "%Y-%m-%d")
+        
+        except ValueError :
+
+            return None
+

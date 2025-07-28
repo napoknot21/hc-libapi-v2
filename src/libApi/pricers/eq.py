@@ -29,74 +29,6 @@ strategies_instruments_creation = {
 }
 
 
-def get_dates (start_date : str, end_date : str, frequency : str) -> list[str] :
-    """
-    Function that returns a list of dates based on the start date, end date and frequency
-
-    Args:
-        start_date (str) : start date in format 'YYYY-MM-DD'
-        end_date (str) : end date in format 'YYYY-MM-DD'
-        frequency (str) : 'Day', 'Week', 'Month', 'Quarter', 'Year' represents the frequency of the equity curve
-        
-    Returns:
-        date_list (list) : list of dates in format 'YYYY-MM-DD'
-    """
-    # Convert the input date strings to datetime objects
-    start = datetime.strptime(start_date, '%Y-%m-%d')
-    end = datetime.strptime(end_date, '%Y-%m-%d')
-    
-    # Map the frequency string to pandas offset alias
-    freq_map = {
-
-        'Day' : 'D',
-        'Week' : 'W',
-        'Month' : 'ME',
-        'Quarter' : 'Q',
-        'Year' : 'Y'
-    
-    }
-
-    # Try except to macth all versions of pandas
-    try :
-
-        # Get the corresponding pandas frequency alias
-        pd_frequency = freq_map.get(frequency)
-        
-        # Check if the frequency is valid
-        if not pd_frequency :
-            raise ValueError(f"[-] Invalid frequency: {frequency}. Choose from 'Day', 'Week', 'Month', 'Quarter', 'Year'.")
-        
-        # Generate the date range using pandas
-        date_range = pd.date_range(start=start, end=end, freq=pd_frequency)
-
-    except :
-
-        freq_map['Month'] = "M"
-
-        # Get the corresponding pandas frequency alias
-        pd_frequency = freq_map.get(frequency)
-        
-        # Check if the frequency is valid
-        if not pd_frequency :
-            raise ValueError(f"Invalid frequency: {frequency}. Choose from 'Day', 'Week', 'Month', 'Quarter', 'Year'.")
-        
-        # Generate the date range using pandas
-        date_range = pd.date_range(start=start, end=end, freq=pd_frequency)
-    
-    # Filter out weekends for non-business day frequencies
-    if frequency == 'Day' :
-        date_range = date_range[~date_range.weekday.isin([5, 6])]
-    
-    # Convert the date range to a list of strings in the format 'YYYY-MM-DD'
-    date_list = date_range.strftime('%Y-%m-%d').tolist()
-    
-    # Add start date if it is not in the dates
-    if start_date not in date_list :
-        date_list.append(start_date)
-    
-    return date_list
-
-
 class PricerEQ (Pricer) :
 
 
@@ -452,7 +384,7 @@ class PricerEQ (Pricer) :
             end_date (str) : end date in format 'YYYY-MM-DD'
             frequency (str) : 'Day', 'Week', 'Month', 'Quarter', 'Year' represents the frequency of the equity curve
         """
-        # Check if dates are correct format
+        # Check if dates are in correct format
         if type(expiry) != str :
             raise KeyError('[-] Expiry is not a string')
         
@@ -463,7 +395,7 @@ class PricerEQ (Pricer) :
             raise KeyError('[-] end_date is not a string')
         
         # Get the dates based on the start and end date and the frequency
-        valuation_dates = get_dates(start_date, end_date, frequency)
+        valuation_dates = self.get_dates(start_date, end_date, frequency)
 
         # First we need to check if this function call was already called or not
         exists, filename = self.does_equity_curve_exist(direction, BBGTicker, opt_type, strike, notional, expiry, start_date, end_date, frequency)
