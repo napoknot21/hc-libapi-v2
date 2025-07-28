@@ -118,7 +118,7 @@ def get_last_run_time (calculation_type, fund="HV", filename=FILE_ID_CALCULATION
     return last_run_time, last_run_id
 
 
-def get_closest_date_of_run_MV (target_date, filename=FILE_ID_CALCULATION_PATH) :
+def get_closest_date_of_run_mv (target_date, filename=FILE_ID_CALCULATION_PATH) :
     """
     
     """

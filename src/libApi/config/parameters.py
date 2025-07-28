@@ -18,6 +18,7 @@ ICE_URL_GET_TRADES=os.getenv("ICE_URL_GET_TRADES")
 ICE_URL_CALC_RES=os.getenv("ICE_URL_CALC_RES")
 ICE_URL_BIL_IM_CALC=os.getenv("ICE_URL_BIL_IM_CALC")
 ICE_URL_TRADE_ADD=os.getenv("ICE_URL_TRADE_ADD")
+ICE_URL_INVOKE_CALC=os.getenv("ICE_URL_INVOKE_CALC")
 
 
 ICE_URL_QUERY_RESULTS=os.getenv("ICE_URL_QUERY_RESULTS")
@@ -40,6 +41,10 @@ SAVED_REQUESTS_DIRECTORY_PATH=os.getenv("SAVED_REQUESTS_DIRECTORY_PATH")
 # instruments concurrencies
 CCYS_ORDER=['EUR', 'USD', 'CHF', 'CAD', 'JPY', 'GBP', 'SEK', 'NOK']
 
+
+# Book names
+BOOK_NAMES=(os.getenv("BOOK_NAMES")).split(",")
+BOOK_N_SUBBOOK_NAMES=(os.getenv("BOOK_N_SUBBOOK_NAMES")).split(",")
 
 # Counterparties and their names
 counterparties = [
