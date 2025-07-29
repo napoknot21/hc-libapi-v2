@@ -13,32 +13,6 @@ class IceCalculator (GenericApi) :
         super().__init__(ICE_HOST, ICE_AUTH)
         self.authenticate(ICE_USERNAME, ICE_PASSWORD)
 
-    
-    def get_calc_results (self, calculation_id) -> dict :
-        """
-        Get calculation results based on a specific calculation ID.
-
-        Args :
-            - calculation_id : str -> The ID of the calculation.
-
-        Returns:
-            - response : dict -> Calculation results
-        """
-        response = self.get(
-
-            ICE_URL_CALC_RES,
-            body={
-
-                "calculationId" : calculation_id,
-                "includeResultsInHomeCurrency" : "yes",
-                "includeResultsInPortfolioCurrency" : "no"
-
-            }
-
-        )
-
-        return response
-    
 
     def run_im_bilateral (self, date : str, ctptys=True) -> dict :
         """

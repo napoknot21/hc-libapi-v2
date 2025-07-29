@@ -62,7 +62,7 @@ class PricerEQ (Pricer) :
         # Create instruments
         instruments_json = [
 
-            self.create_json_for_instr(
+            self.create_json_for_instruments(
 
                 instr['direction'], 
                 instr['BBGTicker'],

@@ -1,7 +1,7 @@
 import requests
 from datetime import datetime
 
-from libApi.config.parameters import API_LOG_REQUEST_FILE_PATH
+from libApi.config.parameters import API_LOG_REQUEST_FILE_PATH, ICE_URL_CALC_RES
 from urllib3.exceptions import InsecureRequestWarning
 
 # Suppress only the InsecureRequestWarning from urllib3 needed for insecure connections
@@ -148,4 +148,31 @@ class GenericApi :
 
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             log_file.write(f"[{timestamp}] {method} request to {endpoint}\n")
+
+
+    def get_calc_results (self, calculation_id) -> dict :
+        """
+        Get calculation results based on a specific calculation ID.
+
+        Args:
+            calculation_id (str) : The ID of the calculation.
+
+        Returns:
+            response (dict) : Calculation results
+        """
+        response = self.get(
+
+            ICE_URL_CALC_RES,
+            body={
+
+                "calculationId" : calculation_id,
+                "includeResultsInHomeCurrency" : "yes",
+                "includeResultsInPortfolioCurrency" : "no"
+
+            }
+
+        )
+
+        return response
+    
         

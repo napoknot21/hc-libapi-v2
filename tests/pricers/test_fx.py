@@ -15,11 +15,11 @@ def pricer_fx () :
     return fx
 
 
-def test_create_json_for_instr (pricer_fx) :
+def test_create_json_for_instruments (pricer_fx) :
     """
     
     """
-    payload = pricer_fx.create_json_for_instr(
+    payload = pricer_fx.create_json_for_instruments(
 
         direction="Buy",
         pair="EURUSD",

@@ -70,7 +70,7 @@ class PricerFX (Pricer) :
             },
             "Instruments": [
 
-                self.create_json_for_instr(
+                self.create_json_for_instruments(
                     instr['direction'], 
                     instr['pair'],
                     instr['opt_type'], 
@@ -150,7 +150,7 @@ class PricerFX (Pricer) :
         return all_prices_grouped
     
 
-    def create_json_for_instr (self, direction, pair, opt_type, strike, notional, notional_currency, expiry, ID) :
+    def create_json_for_instruments (self, direction, pair, opt_type, strike, notional, notional_currency, expiry, ID) :
         """
         
         """
