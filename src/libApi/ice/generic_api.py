@@ -119,23 +119,23 @@ class GenericApi :
 
         try :
 
-            response = requests.get(url, headers=self.headers, verify=self.verify_ssl, json=data)
+            response = requests.post(url, headers=self.headers, verify=self.verify_ssl, json=data)
             response.raise_for_status()
 
-            print(f"[+] POST Request to {url} successful !")
+            print(f"\n[+] POST Request to {url} successful !\n")
             
             data = response.json()
-            self.log_request("GET", url)
+            self.log_request("POST", url)
 
             return data
 
         except requests.exceptions.HTTPError as e :
 
-            print(f"[-] POST Request Error: {e.response.status_code} - {e.response.text}")
+            print(f"\n[-] POST Request Error: {e.response.status_code} - {e.response.text}\n")
         
         except requests.exceptions.RequestException as e :
 
-            print(f"[-] Error making POST request: {e}")
+            print(f"\n[-] Error making POST request: {e}\n")
 
 
     def log_request (self, method : str, endpoint : str) :

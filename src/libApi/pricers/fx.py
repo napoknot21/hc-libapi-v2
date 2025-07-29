@@ -127,7 +127,7 @@ class PricerFX (Pricer) :
             strikes (list): list of strikes (ATMF, ATM, or value, or any percentage itm or otm, or delta eg: 15itm, 20itmf, 20otm)
                 note: if itm or otm is used, keep in mind that this value will be set for every individual option in the stratergy
         """
-        print(f"[*] Pricing {strategy} for {ccys} with expiries {expiries} and strikes {strikes}")
+        print(f"[*] Pricing {strategy} for {ccys} with expiries {expiries} and strikes {strikes}\n")
         
         # Create all instruments to price
         instruments = strategies_instruments_creation[strategy](ccys, expiries, strikes)
