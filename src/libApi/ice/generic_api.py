@@ -61,13 +61,15 @@ class GenericApi :
             self.headers["AuthenticationToken"] = f"{self.auth_token}"
             self.authenticated = True
 
+            print("[+] API authentication successfully\n")
+
         except requests.exceptions.HTTPError as e :
 
-            print(f"Authentication Error: {e.response.status_code} - {e.response.text}")
+            print(f"[-] Authentication Error: {e.response.status_code} - {e.response.text}\n")
 
         except requests.exceptions.RequestException as e :
 
-            print(f"Error during authentication: {e}")
+            print(f"[-] Error during authentication: {e}\n")
 
 
     def get (self, endpoint : str, params=None, body=None) :
@@ -89,7 +91,7 @@ class GenericApi :
             response = requests.get(url, headers=self.headers, params=params, verify=self.verify_ssl, json=body)
             response.raise_for_status()
 
-            print(f"[+] GET Request to {url} successful !")
+            print(f"[+] GET Request to {url} successful !\n")
             
             data = response.json()
             self.log_request("GET", url)
@@ -140,9 +142,9 @@ class GenericApi :
         """
         Log the API request to a text file.
 
-        Args :
-            - method : str -> The HTTP method (GET or POST).
-            - endpoint :str -> The API endpoint.
+        Args:
+            method (str) : The HTTP method (GET or POST).
+            endpoint (str) : The API endpoint.
         """
         with open(API_LOG_REQUEST_FILE_PATH, "a") as log_file :
 
