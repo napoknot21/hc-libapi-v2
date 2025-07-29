@@ -116,24 +116,39 @@ class PricerFX (Pricer) :
         return all_prices
     
 
-    def price_strategy (self, strategy, ccys, expiries, strikes, time="00:00", date=datetime.now().strftime("%Y-%m-%d"), details=False) :
+    def price_strategy (self, strategy, ccys : list, expiries : list, strikes, time="00:00", date=datetime.now().strftime("%Y-%m-%d"), details=False) :
         """
         prices a straddle for a given set of currencies, expiries and strikes.
 
         Args:
-            - strategy : str -> 'Straddle', 'Strangle', 'Call Spread', 'Put Spread', 'Put', 'Call'
-            - ccys : list -> list of currency pairs ['EURUSD']
-            - expiries : list -> list of expiry dates in format 'YYYY-MM-DD' ['2024-05-27']
-            strikes (list): list of strikes (ATMF, ATM, or value, or any percentage itm or otm, or delta eg: 15itm, 20itmf, 20otm)
-                note: if itm or otm is used, keep in mind that this value will be set for every individual option in the stratergy
+            strategy (str) : strategy for the price, i.e. 'Put', 'Call', 'Straddle', 'Strangle', 'Call Spread', 'Put Spread'
+            ccys (list) : List of currency pairs , i.e. ['EURUSD', 'EURCHF']
+            expiries (list) : List of expiry dates in format 'YYYY-MM-DD', i.e ['2024-05-27']
+            strikes (list): list of strikes, i.e. ['ATMF', 'ATM'] or value, or any percentage itm or otm, or delta eg: 15itm, 20itmf, 20otm)
+        
+        Note:
+            if itm or otm is used, keep in mind that this value will be set for every individual option in the stratergy
         """
         print(f"[*] Pricing {strategy} for {ccys} with expiries {expiries} and strikes {strikes}\n")
         
         # Create all instruments to price
         instruments = strategies_instruments_creation[strategy](ccys, expiries, strikes)
-                
+        """
+        Instruments is an list of dictionnaries, for each instrument, it is in the following format:
+        => instrument = {
+            'direction': 'Sell',
+            'pair': 'EURUSD',
+            'opt_type': 'Put',
+            'strike': 'ATM',
+            'notional': 1000000,
+            'notional_currency': 'EUR',
+            'expiry': '2026-07-22',
+            'stratid': 360
+        }
+        """
+
         # call the API
-        all_prices = self.get_opts_prices(instruments, time, date=date)
+        all_prices = self.get_opts_prices(instruments, time, date=date)  # This is a dataFrame
         
         # Filter columns
         filtered_columns_in_pricer = {k: v for k, v in columnsInPricer.items() if k in all_prices.columns}
