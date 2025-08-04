@@ -1,3 +1,5 @@
+import datetime as dt
+
 from libApi.ice.generic_api import GenericApi
 from libApi.config.parameters import *
 from libApi.utils.calculations import *
@@ -14,7 +16,7 @@ class IceCalculator (GenericApi) :
         self.authenticate(ICE_USERNAME, ICE_PASSWORD)
 
 
-    def run_im_bilateral (self, date : str, ctptys=True) -> dict :
+    def run_im_bilateral (self, date : str, fund="HV", ctptys=True) -> dict :
         """
         Runs a bilateral IM calculation.
 
@@ -25,22 +27,23 @@ class IceCalculator (GenericApi) :
         Returns :
             - response : dict -> Result of the IM bilateral calculation.
         """
-        verfied_date = date.strftime("%Y-%m-%d") if isinstance(date, str) else date
+        verfied_date = date.strftime("%Y-%m-%d") if not isinstance(date, str) else date
 
         body = {
 
             "valuation" : {
                 "type" : "EOD",
-                "date" : date
+                "date" : verfied_date
             },
             
-            "bookNames": BOOK_NAMES,
+            "bookNames": BOOK_NAME_HV if fund == "HV" else BOOK_NAME_WR,
             "model": "SIMM"
 
         }
 
         if ctptys :
             body["counterParyNames"] = ["Goldman Sachs Group, Inc.", "MorganStanley", "European Depositary Bank", "Saxo Bank"]
+            body["bookNames"] = BOOK_NAME_HV
 
         response = self.get(
 
@@ -184,7 +187,7 @@ class IceCalculator (GenericApi) :
         return calc_results
 
 
-    def get_billateral_im_ctpy (self, date, fund="HV") :
+    def get_billateral_im_ctpy (self, date : dt.datetime, fund : str = "HV") :
         """
         
         """
@@ -193,7 +196,7 @@ class IceCalculator (GenericApi) :
 
         if not id_calc :
 
-            print("[*] Run calculation in ICE for date ", date)
+            print(f"[*] Run calculation in ICE for date {date} \n")
             
             id_calc = self.run_im_bilateral(date_formated, fund=fund)["calculationId"]
             write_to_file(date_formated, id_calc, "IM", fund=fund)

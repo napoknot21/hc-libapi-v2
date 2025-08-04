@@ -46,6 +46,10 @@ CCYS_ORDER=['EUR', 'USD', 'CHF', 'CAD', 'JPY', 'GBP', 'SEK', 'NOK']
 BOOK_NAMES=(os.getenv("BOOK_NAMES")).split(",")
 BOOK_N_SUBBOOK_NAMES=(os.getenv("BOOK_N_SUBBOOK_NAMES")).split(",")
 
+BOOK_NAME_HV=(os.getenv("BOOK_NAMES_HV")).split(",")
+BOOK_NAME_WR=(os.getenv("BOOK_NAMES_WR")).split(",")
+
+
 # Counterparties and their names
 counterparties = [
 
