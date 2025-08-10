@@ -1,11 +1,12 @@
 import datetime as dt
 
-from libApi.ice.generic_api import GenericApi
-from libApi.config.parameters import *
-from libApi.utils.calculations import *
+from libapi.ice.client import Client
+
+from libapi.config.parameters import *
+from libapi.utils.calculations import *
 
 
-class IceCalculator (GenericApi) :
+class IceCalculator (Client) :
 
 
     def __init__ (self) -> None :

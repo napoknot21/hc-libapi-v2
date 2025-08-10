@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from libApi.config.parameters import FILE_ID_CALCULATION_PATH
+from libapi.config.parameters import FILE_ID_CALCULATION_PATH
 
 def write_to_file (date, ID, calculation_type, fund="HV", filename=FILE_ID_CALCULATION_PATH) -> None :
     """

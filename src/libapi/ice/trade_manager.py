@@ -1,13 +1,24 @@
 
-from libApi.ice.generic_api import GenericApi
-from libApi.config.parameters import *
+from libapi.ice.client import Client
+from libapi.config.parameters import ICE_HOST, ICE_AUTH, ICE_USERNAME, ICE_PASSWORD
 
 
-class TradeManager (GenericApi) :
+class TradeManager (Client) :
 
-    def __init__ (self) :
-        super().__init__(ICE_HOST, ICE_AUTH)
-        self.authenticate(ICE_USERNAME, ICE_PASSWORD)
+    def __init__ (
+        
+            self,
+            ice_host : str = ICE_HOST,
+            ice_auth : str = ICE_AUTH,
+            username : str = ICE_USERNAME,
+            password : str = ICE_PASSWORD,       
+
+        ) -> None :
+        """
+        
+        """
+        super().__init__(ice_host, ice_auth)
+        self.authenticate(username, password)
 
     
     def get_trades_from_books (self, name_book : list) -> list :

@@ -1,4 +1,4 @@
-from libApi.config.parameters import CCYS_ORDER
+from libapi.config.parameters import CCYS_ORDER
 
 
 def find_ccy (ccy : str) :

@@ -1,23 +1,25 @@
 import requests
 from datetime import datetime
 
-from libApi.config.parameters import API_LOG_REQUEST_FILE_PATH, ICE_URL_CALC_RES
+from libapi.config.parameters import API_LOG_REQUEST_FILE_PATH, ICE_URL_CALC_RES
 from urllib3.exceptions import InsecureRequestWarning
 
 # Suppress only the InsecureRequestWarning from urllib3 needed for insecure connections
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-class GenericApi :
+
+class Client :
+
 
     def __init__ (self, api_host : str, auth_url : str) :
         """
         Initializes the GenericAPI instance
 
-        Args :
-            - api_host : str -> The base URL of the API.
-            - auth_url : str -> The authentication endpoint URL.
+        Args:
+            api_host (str) : The base URL of the API.
+            auth_url (str) : The authentication endpoint URL.
 
-        Example :
+        Example:
             - api_host = "https://github.com"
             - auth_url = "/auth/login.php"
         
@@ -177,4 +179,4 @@ class GenericApi :
 
         return response
     
-        
+

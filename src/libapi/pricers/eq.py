@@ -3,10 +3,10 @@ import pandas as pd
 
 from datetime import datetime
 
-from libApi.pricers.pricer import Pricer
-from libApi.config.parameters import columnsInPricer, SAVED_REQUESTS_DIRECTORY_PATH, EQ_PRICER_CALC_PATH, EQ_PRICER_SOLVE_PATH
+from libapi.pricers.pricer import Pricer
+from libapi.config.parameters import columnsInPricer, SAVED_REQUESTS_DIRECTORY_PATH, EQ_PRICER_CALC_PATH, EQ_PRICER_SOLVE_PATH
 
-from libApi.instruments.instruments import (
+from libapi.instruments.instruments import (
 
     get_instruments_samestrike_sell_put_call_eq, 
     get_instruments_2_strikes_sell_put_call_eq, 

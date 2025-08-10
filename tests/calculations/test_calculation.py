@@ -4,7 +4,7 @@ import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from libApi.utils.calculations import *
+from libapi.utils.calculations import *
 
 
 def make_line(date, id, type, fund="HV"):

@@ -1,8 +1,8 @@
-from libApi.ice.generic_api import GenericApi
-from libApi.config.parameters import *
+from libapi.ice.client import Client
+from libapi.config.parameters import *
 
 
-class IceData (GenericApi) :
+class IceData (Client) :
 
     def __init__ (self) -> None :
         """

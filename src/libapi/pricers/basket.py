@@ -2,8 +2,8 @@ import os
 import pandas as pd
 from datetime import datetime
 
-from libApi.config.parameters import columnsInPricer, SAVED_REQUESTS_DIRECTORY_PATH, EQ_PRICER_CALC_PATH
-from libApi.pricers.pricer import Pricer
+from libapi.config.parameters import columnsInPricer, SAVED_REQUESTS_DIRECTORY_PATH, EQ_PRICER_CALC_PATH
+from libapi.pricers.pricer import Pricer
 
 class PricerBasket (Pricer) :
 

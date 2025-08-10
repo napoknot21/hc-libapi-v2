@@ -1,8 +1,8 @@
 import pandas as pd
 from datetime import datetime
 
-from libApi.ice.trade_manager import TradeManager
-from libApi.config.parameters import PRICING_LOG_FILE_PATH
+from libapi.ice.trade_manager import TradeManager
+from libapi.config.parameters import PRICING_LOG_FILE_PATH
 
 class Pricer :
 

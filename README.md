@@ -37,8 +37,8 @@ Other imports...
 # Import and use of the API
 sys.path.append(r"C:\path\to\the\libApi\src") # For windows paths
 
-from libApi.ice.ice_calculator import IceCalculator
-from libApi.pricers.fx import PricerFX
+from libapi.ice.ice_calculator import IceCalculator
+from libapi.pricers.fx import PricerFX
 
 ice_api = IceCalculator()
 pricer_fx = PricerFx()

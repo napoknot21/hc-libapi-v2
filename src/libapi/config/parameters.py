@@ -1,5 +1,10 @@
 import os
-from libApi.config.env import load_dotenv
+from pathlib import Path
+from dotenv import load_dotenv
+
+# If your .env sits next to this file:
+ENV_PATH = Path(__file__).with_name(".env")
+load_dotenv(ENV_PATH)
 
 ICE_HOST=os.getenv("ICE_HOST")
 ICE_AUTH=os.getenv("ICE_AUTH")

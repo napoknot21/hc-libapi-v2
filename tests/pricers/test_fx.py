@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 
 from unittest.mock import MagicMock, patch
-from libApi.pricers.fx import PricerFX
+from libapi.pricers.fx import PricerFX
 
 
 @pytest.fixture

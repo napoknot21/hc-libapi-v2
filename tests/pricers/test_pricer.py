@@ -3,7 +3,7 @@ import pandas as pd
 
 from pathlib import Path
 from datetime import datetime
-from libApi.pricers.pricer import Pricer
+from libapi.pricers.pricer import Pricer
 
 
 def test_log_api_call(tmp_path, monkeypatch):
