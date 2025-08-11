@@ -1,6 +1,6 @@
-import datetime as dt
-
 from __future__ import annotations
+
+import datetime as dt
 from functools import lru_cache
 
 from libapi.ice.client import Client

@@ -1,41 +1,51 @@
+from typing import Optional, Dict, Any
+
 from libapi.ice.client import Client
 from libapi.config.parameters import *
 
 
 class IceData (Client) :
 
-    def __init__ (self) -> None :
+    def __init__ (
+            
+            self,
+            ice_host : str = ICE_HOST,
+            ice_auth : str = ICE_AUTH,
+            username : str = ICE_USERNAME,
+            password : str = ICE_PASSWORD
+
+        ) -> None :
         """
         Initialize the IceData instance and authenticate with the ICE API.
         """ 
-        super().__init__(ICE_HOST, ICE_AUTH)
-        self.authenticate(ICE_USERNAME, ICE_PASSWORD)
+        super().__init__(ice_host, ice_auth)
+        self.authenticate(username, password)
 
 
-    def volatility_surface (self) : 
+    def volatility_surface (self, endpoint : str = ICE_URL_QUERY_RESULTS) -> Optional[Dict[Any, Any]]: 
         """
         
         """
         response = self.post(
 
-            ICE_URL_QUERY_RESULTS,
-            {
+            endpoint=endpoint,
+            data={
                 "dataQueryId" : ICE_DATA_VS_ID
             }
 
         )
 
-        return response
+        return response.json() if response is not None else None
     
     
-    def data_query (self) :
+    def data_query (self, endpoint : str = ICE_URL_INVOKE_DQUERY) -> Optional[Dict[Any, Any]]:
         """
         
         """
         response = self.post(
 
-            ICE_URL_INVOKE_DQUERY,
-            {
+            endpoint=endpoint,
+            data={
                 "dataQueries" : [
                     {
                         
@@ -57,4 +67,4 @@ class IceData (Client) :
             }
         )
 
-        return response
+        return response.json() if response is not None else None
