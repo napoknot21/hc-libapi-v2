@@ -24,7 +24,7 @@ class IceCalculator (Client) :
             ice_username : str = ICE_USERNAME,
             ice_password : str = ICE_PASSWORD,
 
-            auto_auth: bool = True,
+            auto_auth: bool = False,
             
         ) -> None :
         """
@@ -45,9 +45,10 @@ class IceCalculator (Client) :
                 raise ValueError("[-] Missing ICE credentials\n")
             
             self.authenticate(ice_username, ice_password)
+            self.auto_auth = auto_auth
 
 
-    def authenticate (self, username : str, password : str) :
+    def authenticate (self, username : str, password : str) -> bool :
         """
         
         """

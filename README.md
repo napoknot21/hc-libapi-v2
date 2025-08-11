@@ -34,7 +34,6 @@ cd src
 ```
 
 
-
 ## How to use / import the library ?
 
 Core libApi is in `src` directory. You need to join the absolute path of the `libApi/src` in your project or files
