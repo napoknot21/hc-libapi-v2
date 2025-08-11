@@ -17,6 +17,23 @@ pip3 install PACKAGE_NAME
 ```
 `PACKAGE_NAME` : Replace this by the names of the 
 
+### `.env` file
+In order to assign values to the common parameters of the lib (i.e. `USER`, `PASSWORD`, etc) you need to create a `.env` file !
+
+the `.env` file follows the classic structure of
+```python
+GLOABAL_VARIABLE="Value"
+```
+> Only `string` and `integer` types are accpeted
+> 
+> No espaces between the name, the value and the `=` sign (Convention)
+
+Once done, place it into the lib root directory
+```bash
+cd src
+```
+
+
 
 ## How to use / import the library ?
 
