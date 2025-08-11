@@ -1,13 +1,17 @@
 import os
-from pathlib import Path
-from dotenv import load_dotenv
+from __future__ import annotations
+from dotenv import load_dotenv, find_dotenv
 
-# If your .env sits next to this file:
-ENV_PATH = Path(__file__).with_name(".env")
-load_dotenv(ENV_PATH)
+# If the .env sits next to this file:
+ENV_PATH = find_dotenv()
+
+if ENV_PATH :
+    load_dotenv(ENV_PATH)
+
 
 ICE_HOST=os.getenv("ICE_HOST")
 ICE_AUTH=os.getenv("ICE_AUTH")
+
 
 ICE_USERNAME=os.getenv("ICE_USERNAME")
 ICE_PASSWORD=os.getenv("ICE_PASSWORD")

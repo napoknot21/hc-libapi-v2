@@ -1,21 +1,58 @@
 import datetime as dt
 
+from __future__ import annotations
+from functools import lru_cache
+
 from libapi.ice.client import Client
 
-from libapi.config.parameters import *
+from libapi.config.parameters import ICE_AUTH, ICE_HOST, ICE_USERNAME, ICE_PASSWORD
 from libapi.utils.calculations import *
 
 
 class IceCalculator (Client) :
+    """
+    Client spécialisé ICE : lancements + récupération de résultats,
+    avec cache mémoire et utilitaires factorisés.
+    """
 
 
-    def __init__ (self) -> None :
+    def __init__ (
+        
+            self,
+            ice_host : str = ICE_HOST,
+            ice_auth : str = ICE_AUTH,
+            ice_username : str = ICE_USERNAME,
+            ice_password : str = ICE_PASSWORD,
+
+            auto_auth: bool = True,
+            
+        ) -> None :
         """
-        Initialize the IceApi instance and authenticate with the ICE API.
-        """
-        super().__init__(ICE_HOST, ICE_AUTH)
-        self.authenticate(ICE_USERNAME, ICE_PASSWORD)
+        Initialize the ICE calculator and authenticate against the ICE API.
 
+        This constructor configures the base API host and authentication endpoint
+        on the underlying client, then performs an authentication call using the
+        provided credentials.
+        
+        On success, the authentication token is stored in
+        the client's headers for subsequent requests.
+        """
+        super().__init__(ice_host, ice_auth)
+
+        if auto_auth :
+
+            if not ice_username or not ice_password :
+                raise ValueError("[-] Missing ICE credentials\n")
+            
+            self.authenticate(ice_username, ice_password)
+
+
+    def authenticate (self, username : str, password : str) :
+        """
+        
+        """
+        return super().authenticate(username, password)
+    
 
     def run_im_bilateral (self, date : str, fund="HV", ctptys=True) -> dict :
         """
@@ -234,7 +271,7 @@ class IceCalculator (Client) :
         return calculation
 
 
-    def get_billateral_im (self, date) :
+    def get_billateral_im (self, date : str | dt.datetime = dt.datetime.now()) :
         """
         Get billateral-IM calculation for a specific date
 
@@ -244,7 +281,8 @@ class IceCalculator (Client) :
         Returns:
             calculation (json) : Result of the billateral-IM calculation.
         """
-        date_formated = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        date_formated = _date_to_str(date) 
+        date.replace(hour=0, minute=0, second=0, microsecond=0)
         id_calc = read_id_from_file(date_formated, "IM-ptf")
 
         if not id_calc :
@@ -282,3 +320,12 @@ class IceCalculator (Client) :
         calculation = self.get_calc_results(calculation_id)
 
         return calculation
+    
+
+    # Cache mémoire pour éviter de re-fetcher un même id
+    @lru_cache(maxsize=128)
+    def _cached_calc_results (self, calculation_id: str) -> dict[str] :
+        return super().get_calc_results(calculation_id)
+    
+
+    

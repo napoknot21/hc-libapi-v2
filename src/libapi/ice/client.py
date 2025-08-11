@@ -1,8 +1,13 @@
 import requests
+from typing import Dict, Any
 from datetime import datetime
 
+import requests.adapters
+
 from libapi.config.parameters import API_LOG_REQUEST_FILE_PATH, ICE_URL_CALC_RES
+
 from urllib3.exceptions import InsecureRequestWarning
+from urllib3.util.retry import Retry
 
 # Suppress only the InsecureRequestWarning from urllib3 needed for insecure connections
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -11,36 +16,45 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 class Client :
 
 
-    def __init__ (self, api_host : str, auth_url : str) :
+    def __init__ (
+        
+            self,
+            api_host : str,
+            auth_url : str,
+            token : str | None = None,
+            is_auth : bool = False,
+            verify_ssl : bool = False,
+            timeout : int = 10
+
+        ) -> None :
         """
-        Initializes the GenericAPI instance
+        Initializes the API client.
 
         Args:
-            api_host (str) : The base URL of the API.
-            auth_url (str) : The authentication endpoint URL.
-
-        Example:
-            - api_host = "https://github.com"
-            - auth_url = "/auth/login.php"
-        
+            api_host (str) : Base URL of the API, e.g. "https://github.com" (with or without trailing slash).
+            auth_url (str) : Auth endpoint path, e.g. "/auth/login.php" (with or without leading slash).
+            verify_ssl (bool) : Verify TLS certificates. Keep True in production.
+            timeout (int) : Default request timeout (seconds).
+            session: Optional preconfigured requests.Session.
         """
         self.api_host = api_host
         self.auth_url = auth_url
 
         self.full_auth_url = f"{self.api_host}/{self.auth_url}"
 
-        self.auth_token = None
-        self.authenticated = False
+        self.token = token
+        self.is_auth = is_auth
 
         self.headers = {
             "Content-Type" : "application/json",
             "AuthenticationToken" : None
         }
 
-        self.verify_ssl = False
+        self.verify_ssl = verify_ssl
+        self.timeout = timeout
 
 
-    def authenticate (self, username : str, password : str) :
+    def authenticate (self, username : str, password : str) -> bool :
         """
         Authenticate the API using provided username and password.
 
@@ -50,8 +64,10 @@ class Client :
 
         """
         auth_data = {
+
             "username" : username,
             "password" : password
+        
         }
 
         try :
@@ -61,7 +77,7 @@ class Client :
 
             self.auth_token = response.json().get('token')
             self.headers["AuthenticationToken"] = f"{self.auth_token}"
-            self.authenticated = True
+            self.is_auth = True
 
             print("[+] API authentication successfully\n")
 
@@ -140,7 +156,12 @@ class Client :
             print(f"\n[-] Error making POST request: {e}\n")
 
 
-    def log_request (self, method : str, endpoint : str) :
+    def log_request (
+            self,
+            method : str,
+            endpoint : str,
+            log_abs_path : str = API_LOG_REQUEST_FILE_PATH
+        ) :
         """
         Log the API request to a text file.
 
@@ -148,13 +169,13 @@ class Client :
             method (str) : The HTTP method (GET or POST).
             endpoint (str) : The API endpoint.
         """
-        with open(API_LOG_REQUEST_FILE_PATH, "a") as log_file :
+        with open(log_abs_path, "a") as log_file :
 
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             log_file.write(f"[{timestamp}] {method} request to {endpoint}\n")
 
 
-    def get_calc_results (self, calculation_id) -> dict :
+    def get_calc_results (self, calculation_id, endpoint_calc : str = ICE_URL_CALC_RES) -> dict :
         """
         Get calculation results based on a specific calculation ID.
 
@@ -166,7 +187,7 @@ class Client :
         """
         response = self.get(
 
-            ICE_URL_CALC_RES,
+            endpoint_calc,
             body={
 
                 "calculationId" : calculation_id,
@@ -179,4 +200,31 @@ class Client :
 
         return response
     
+
+    def _build_session (self, retries: int = 3, backoff: float = 0.5) -> requests.Session :
+        """
+        
+        """
+        session = requests.Session()
+
+        retry = Retry(
+
+            total=retries,
+            connect=retries,
+            read=retries,
+            status=retries,
+            backoff_factor=backoff,
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods={"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+            raise_on_status=False,
+        
+        )
+
+        adapter = requests.adapters.HTTPAdapter(max_retries=retry)
+
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+
+        return session
+        
 

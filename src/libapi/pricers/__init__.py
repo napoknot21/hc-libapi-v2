@@ -1,4 +1,6 @@
-from .eq import PricerEQ
 from .fx import PricerFX
+from .eq import PricerEQ
+from .basket import PricerBasket
 
-__all__ = ['PricerEQ', 'PricerFX']
+
+__all__ = ["PricerFX", "PricerEQ", "PricerBasket"]
