@@ -21,8 +21,11 @@ def _as_date_str (date : str | dt.datetime) -> str :
 
 class Pricer :
 
-    def __init__ (self) :
-        self.api = TradeManager()
+    def __init__ (self, trade_manager : TradeManager = None) :
+        """
+        
+        """
+        self.api = trade_manager if trade_manager is not None else TradeManager()
 
     
     def log_api_call (self, n_instruments : int, date : str | dt.datetime = dt.datetime.now(), pricing_abs_path : str = PRICING_LOG_FILE_PATH) -> None :

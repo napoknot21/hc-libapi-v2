@@ -18,6 +18,7 @@ def _as_date_str (date : str | dt.datetime) -> str :
     """
     return date.strftime("%Y-%m-%d") if isinstance(date, dt.datetime) else str(date)
 
+
 class PricerBasket (Pricer) :
 
 
