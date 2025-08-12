@@ -1,5 +1,6 @@
 import tqdm
 import pandas as pd
+import polars as pl
 from datetime import datetime
 
 from libapi.pricers.pricer import Pricer

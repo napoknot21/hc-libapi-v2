@@ -27,7 +27,7 @@ class Client :
             token : str = None,
             is_auth : bool = False,
             verify_ssl : bool = False,
-            timeout : int = 10
+            timeout : int = 30
 
         ) -> None :
         """
@@ -59,7 +59,7 @@ class Client :
         self.verify_ssl = verify_ssl
         self.timeout = timeout
 
-        self.session = self._build_session()
+        self.session = requests.Session()
 
 
     def authenticate (self, username : str, password : str, url_endpoint : str = None) -> bool :
@@ -126,7 +126,7 @@ class Client :
         return False
 
 
-    def get (self, endpoint : str, params : Dict = None) -> Optional[Dict[str, Any]] :
+    def get (self, endpoint : str, params : Dict = None, json : Dict = None) -> Optional[Dict[str, Any]] :
         """
         Send a GET request.
 
@@ -137,7 +137,7 @@ class Client :
         Returns:
             dict | None: Parsed JSON response if successful, else None.
         """
-        return self._make_request("GET", endpoint, params=params)
+        return self._make_request("GET", endpoint, params=params, json=json)
 
     
     def post (self, endpoint : str, data : Dict = None, json : Dict = None) -> Optional[Dict] :
@@ -203,9 +203,9 @@ class Client :
     def _build_session (
         
             self,
-            retries: int = 3,
+            retries: int = 5,
             backoff: float = 0.5,
-            pool_connections: int = 15,
+            pool_connections: int = 30,
             pool_maxsize: int = 30
         
         ) -> requests.Session:
@@ -239,7 +239,7 @@ class Client :
         
         )
 
-        adapter = requests.HTTPAdapter(
+        adapter = requests.adapters.HTTPAdapter(
 
             max_retries=retry_cfg,
             pool_connections=pool_connections,  # nb of pools by schema
@@ -330,8 +330,6 @@ class Client :
 
             success = True
             status = response.status_code
-
-            response.raise_for_status()
             
         except requests.exceptions.RequestException as e :
             
@@ -356,7 +354,7 @@ class Client :
     # -------------------------------------------------- Logic functions --------------------------------------------------
 
 
-    def get_calc_results (self, calculation_id : str | int, endpoint_calc : str = ICE_URL_CALC_RES) -> Optional[Dict] :
+    def get_calc_results (self, calculation_id : str | int, endpoint : str = ICE_URL_CALC_RES) -> Optional[Dict] :
         """
         Get calculation results by calculation ID.
 
@@ -369,12 +367,14 @@ class Client :
         """
         response = self.get(
 
-            endpoint=endpoint_calc,
-            params={
+            endpoint=endpoint,
+            
+            json={
 
-                "calculationId" : calculation_id,
-                "includeResultsInHomeCurrency" : "yes",
-                "includeResultsInPortfolioCurrency" : "no"
+                "calculationId" : int(calculation_id),
+                "IncludeCalculationDetails" : "Yes",
+                "includeResultsInHomeCurrency" : "Yes",
+                "includeResultsInPortfolioCurrency" : "No"
 
             }
 
