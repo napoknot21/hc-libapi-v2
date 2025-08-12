@@ -7,13 +7,23 @@ from functools import lru_cache
 
 from libapi.ice.client import Client
 
-from libapi.config.parameters import ICE_AUTH, ICE_HOST, ICE_USERNAME, ICE_PASSWORD, BOOK_NAMES_HV_LIST_SUBSET_N1, BOOK_NAMES_WR_LIST_ALL, ICE_URL_BIL_IM_CALC, ICE_URL_INVOKE_CALC, BOOK_NAMES_HV_LIST_ALL
+from libapi.config.parameters import (
+    ICE_AUTH, ICE_HOST, ICE_USERNAME, ICE_PASSWORD,
+    BOOK_NAMES_HV_LIST_SUBSET_N1, BOOK_NAMES_WR_LIST_ALL, BOOK_NAMES_HV_LIST_ALL,
+    ICE_URL_BIL_IM_CALC, ICE_URL_INVOKE_CALC
+)
 from libapi.utils.calculations import *
 
 
 def _as_date_str (date : str | dt.datetime) -> str :
     """
-    
+    Convert a date or datetime object to a string in "YYYY-MM-DD" format.
+
+    Args:
+        date (str | datetime): The input date.
+
+    Returns:
+        str: Date string in "YYYY-MM-DD" format.
     """
     return date.strftime("%Y-%m-%d") if isinstance(date, dt.datetime) else str(date)
 
@@ -37,12 +47,8 @@ class IceCalculator (Client) :
         """
         Initialize the ICE calculator and authenticate against the ICE API.
 
-        This constructor configures the base API host and authentication endpoint
-        on the underlying client, then performs an authentication call using the
-        provided credentials.
-        
-        On success, the authentication token is stored in
-        the client's headers for subsequent requests.
+        This sets up the base API host and authentication headers and performs
+        login using the provided credentials.
         """
         super().__init__(ice_host, ice_auth)
         self.authenticate(ice_username, ice_password)
@@ -50,7 +56,14 @@ class IceCalculator (Client) :
 
     def authenticate (self, username : str = ICE_USERNAME, password : str = ICE_PASSWORD) -> bool :
         """
-        Proxy vers Client.authenticate.
+        Proxy for the base Client.authenticate method.
+
+        Args:
+            username (str): ICE username.
+            password (str): ICE password.
+
+        Returns:
+            bool: True if authentication was successful.
         """
         return super().authenticate(username, password)
 
@@ -68,15 +81,15 @@ class IceCalculator (Client) :
         
         ) -> Optional[Dict]:
         """
-        Lance un calcul IM bilatéral (POST JSON).
+        Launch a bilateral IM calculation (POST JSON).
 
         Args:
-            date: "YYYY-MM-DD" ou datetime.
-            fund: "HV" ou "WR" (selon constantes BOOK_NAME_*).
-            ctptys: inclure une liste de contreparties (sinon portefeuille global).
+            date (str | datetime): Calculation date.
+            fund (str): Fund type ("HV" or "WR").
+            ctptys (bool): Whether to include a list of counterparties.
 
         Returns:
-            dict: réponse API (incluant souvent "calculationId").
+            dict: API response (usually includes "calculationId").
         """
         verified_date = _as_date_str(date)
 
@@ -110,14 +123,15 @@ class IceCalculator (Client) :
 
     def get_post_im (self, date : str | dt.datetime, counterparty_name : str = "MorganStanley", type : str = "IM") -> Optional[str] :
         """
-        Get the post-IM information for a specific counterparty and date.
+        Get bilateral IM calculation results for all counterparties.
 
-        Args :
-            date (str | dt.datetime) : The date in the format "YYYY-MM-DD".
-            counterparty_name (str) : The name of the counterparty.
+        Args:
+            date (datetime): The date for which to run/retrieve the calculation.
+            fund (str): The fund name.
+            type (str): Calculation type label.
 
         Returns:
-            im (str) : Post-IM score.
+            list[dict] | None: List of result dictionaries for each counterparty.
         """
         im = None
         start = time.time()
@@ -128,10 +142,7 @@ class IceCalculator (Client) :
             print('[i] No calculation id found. Running calculation in ICE for date ', date)
 
             calculation_dict = self.run_im_bilateral(date)
-            print(calculation_dict)
-            
             calculation_id = calculation_dict.get("calculationId")
-            #print(type(calculation_id))
 
             write_to_file(date, calculation_id, type)
         
@@ -140,7 +151,7 @@ class IceCalculator (Client) :
 
         if calc_res is None :
 
-            print("[-] Error during fetching, calculation is None...")
+            print("[-] Error during fetch: calculation result is None")
             return calc_res
 
         for result in calc_res :
@@ -148,13 +159,99 @@ class IceCalculator (Client) :
             if result['group'] == counterparty_name :
                 im = result['postIm']
         
-        print(f"[+] Get Post-IM information in {time.time() - start} seconds")
+        print(f"[+] Retrieved Post-IM data in {time.time() - start:.2f} seconds")
         return im
     
 
+    def get_bilateral_im_ctpy (self, date : str | dt.datetime = dt.datetime.now(), fund : str = "HV", type : str = "IM") :
+        """
+        Get bilateral IM calculation results for all counterparties.
+
+        Args:
+            date (datetime): The date for which to run/retrieve the calculation.
+            fund (str): The fund name.
+            type (str): Calculation type label.
+
+        Returns:
+            list[dict] | None: List of result dictionaries for each counterparty.
+        """
+        date_formated = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        calculation_id = read_id_from_file(date_formated, type, fund=fund)
+
+        start = time.time()
+
+        if not calculation_id :
+
+            print(f"[*] Run calculation in ICE for date {date} \n")
+            
+            calculation_dict = self.run_im_bilateral(date_formated, fund=fund)
+            calculation_id = calculation_dict.get("calculationId")
+
+            write_to_file(date_formated, calculation_id, type, fund=fund)
+
+        calculation = self.get_calc_results(calculation_id)
+        calc_res = calculation.get('results') if calculation is not None else None
+
+        if calc_res is None :
+
+            print("[-] Error during fetching, calculation is None...")
+            return None
+        
+        print(f"[+] Get Bilateral IM ctpy information in {time.time() - start} seconds")
+        
+        return calc_res
+    
+
+    def get_bilateral_im (self, date : str | dt.datetime = dt.datetime.now(), type : str = "IMT-ptf") :
+        """
+        Get bilateral IM calculation at the portfolio level (no ctptys split).
+
+        Args:
+            date (datetime): The date of the calculation.
+            type (str): Calculation type.
+
+        Returns:
+            list[dict] | None: Result of the bilateral IM calculation.
+        """
+        date_formatted  = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        calculation_id = read_id_from_file(date_formatted , type)
+
+        start = time.time()
+
+        if not calculation_id :
+
+            print(f"[*] Running ICE calculation for date {date_formatted }")
+            
+            calculation_dict = self.run_im_bilateral(date_formatted , ctptys=False)
+            calculation_id = calculation_dict.get("calculationId")
+
+            write_to_file(date_formatted , calculation_id, calculation_type=type)
+        
+        calculation = self.get_calc_results(calculation_id)
+        calc_res = calculation.get('results') if calculation is not None else None
+
+        if calc_res is None :
+
+            print("[-] Error: Calculation result is None")
+            return None
+
+        print(f"[+] Retrieved portfolio bilateral IM in {time.time() - start:.2f} seconds")
+        
+        return calc_res
+
+
+    # -------------------------------------------------- MV and Greeks --------------------------------------------------
+
+
     def run_mv_n_greeks (self, date : str | dt.datetime = None, endpoint : str = ICE_URL_INVOKE_CALC) -> Optional[dict] :
         """
-        Run MV and Greeks
+        Trigger MV and Greeks calculation.
+
+        Args:
+            date (str | datetime, optional): If provided, run for EOD date.
+
+        Returns:
+            dict: Response from the API.
         """
         valuation = { "type" : "RealTime" } if date is None else { "type" : "EOD", "date" : _as_date_str(date) }
 
@@ -176,29 +273,34 @@ class IceCalculator (Client) :
         return response
 
 
-    def get_mv_n_greeks (self, ask_for_re_run : bool = False, type : str = "MV") -> Optional[Dict]:
+    def get_mv_n_greeks (self, re_run : bool = False, type : str = "MV") -> Optional[Dict]:
         """
-        Get MV and Greeks
+        Retrieve MV and Greeks, optionally re-running the calculation.
 
+        Args:
+            re_run (bool): Whether to re-run the calculation.
+            type (str): Calculation type label.
+
+        Returns:
+            dict: Trade legs with MV and Greeks.
         """
+
         last_run_time, id_last = get_last_run_time(type)
 
         current_time = dt.datetime.now()
         diff_time = current_time - last_run_time
 
-        if ask_for_re_run :
+        if re_run :
 
-            print("\n[*] Time elapse since last run of the Market Value request to the Ice Api\n")
-            print('\t t = ' + str(diff_time))
-            print("\t d = " + str(last_run_time))
+            print("\n[*] Time since last Market Value calculation:")
+            print(f"\tElapsed: {diff_time}")
+            print(f"\tLast Run: {last_run_time}")
 
-            print('\n[?] Do you want to re-run this calculation (y) or use the previous id (n) ? [y/n] ')
-            
-            action = input()
+            action = input("\n[?] Re-run calculation (y) or use existing result (n)? [y/n] ")
 
-            if action.strip() == "y" or action.strip() == "" :
+            if action.strip() in ["y", ""] :
 
-                print('\n[*] Ran Calculation on API...\n')
+                print("[*] Running new calculation...")
 
                 results = self.run_mv_n_greeks()
                 id_last = results.get("calculationId") if results is not None else None
@@ -207,11 +309,11 @@ class IceCalculator (Client) :
             
             else :
 
-                print("\n[*] Using previous ID...\n")
+                print("[*] Using previous calculation ID...")
         
         if id_last is None :
 
-            print("[-] Error during fetching last ID from API...")
+            print("[-] Error: No valid calculation ID found...")
             return None
 
         calc_results = self.get_calc_results(id_last)
@@ -220,9 +322,16 @@ class IceCalculator (Client) :
         return trade_legs
     
 
-    def get_mv_n_greeks_from_last_run (self, ask_for_re_run : bool = False, type : str = "MV") :
+    def get_mv_n_greeks_from_last_run (self, re_run : bool = False, type : str = "MV") -> Optional[Dict] :
         """
-        
+        Fetch MV and Greeks from the last recorded run.
+
+        Args:
+            re_run (bool): Unused.
+            type (str): Calculation type.
+
+        Returns:
+            list[dict] | None: Trade legs.
         """
         last_run_time, id_last = get_last_run_time(type)
 
@@ -235,139 +344,119 @@ class IceCalculator (Client) :
         return trade_legs
     
 
-    def get_mv_n_greeks_daily (self, date_input) :
+    def get_mv_n_greeks_daily (self, date : str | dt.datetime = dt.datetime.now()) -> Optional[Dict]:
         """
-        
-        """
-        date_calc, calc_id = get_closest_date_of_run_mv(datetime.strftime(date_input, "%Y-%m-%d"))
+        Fetch MV and Greeks for a specific date, or run it if needed.
 
-        # Si aucun calcul précédent n'existe
-        if date_calc is None or calc_id is None:
-            print('[-] No previous calculation found or ran calcuation on API\n')
+        Args:
+            date (str | datetime): Date to retrieve the data for.
+
+        Returns:
+            dict: Trade legs from the calculation.
+        """
+
+        verfied_date = _as_date_str(date)
+        date_calc, calc_id = get_closest_date_of_run_mv(verfied_date)
+
+        # No previous calculation
+        if date_calc is None or calc_id is None :
+            print("[-] No previous calculation found or unable to find closest date")
             return None
         
-        id = None 
-        if date_calc[:10] != date_input :
+        id = None
+        if date_calc[:10] != verfied_date :
 
             # Run the calculation for the given date
-            print('\n[+] RAN CALCULATION ON API')
-            id = self.runMvandGreeks()["calculationId"]
+            print("[+] Running new MV and Greeks calculation...")
+
+            mv_n_greeks_dict = self.run_mv_n_greeks()
+            id = mv_n_greeks_dict.get("calculationId") if mv_n_greeks_dict is not None else None
         
         else : # The calculation has already been run for the given date, get the results
             
-            print('\n[*] USING PREVIOUS ID...\n')
+            print("[*] Using existing calculation ID...")
         
-        calc_results = self.get_calc_results(id)['tradeLegs']
-        
-        return calc_results
+        if id is None :
+
+            print("[-] Error: No valid calculation ID found")
+            return None
+
+        calc_results = self.get_calc_results(id)
+        trade_legs = calc_results.get("tradeLegs") if calc_results is not None else None
+
+        return trade_legs
 
 
-    def get_billateral_im_ctpy (self, date : dt.datetime, fund : str = "HV") :
+    def get_cash_ctpy (self, date : str | dt.datetime, fund : str = "HV", type : str = "MV") -> Optional[Dict] :
         """
-        
-        """
-        date_formated = date.replace(hour=0, minute=0, second=0, microsecond=0)
-        id_calc = read_id_from_file(date_formated, "IM", fund=fund)
-
-        if not id_calc :
-
-            print(f"[*] Run calculation in ICE for date {date} \n")
-            
-            id_calc = self.run_im_bilateral(date_formated, fund=fund)["calculationId"]
-            write_to_file(date_formated, id_calc, "IM", fund=fund)
-
-        #print(id_calc)
-        calculation = self.get_calc_results(id_calc)["results"]
-
-        return calculation
-    
-
-    def get_cash_ctpy (self, date, fund="HV") :
-        """
-        Get billateral-IM calculation for a specific date
+        Fetch raw calculation data for a specific fund and date.
 
         Args:
-            date (date): The date in the format "2020-09-30".
+            date (datetime): Calculation date.
+            fund (str): Fund identifier.
+            type (str): Calculation type.
 
         Returns:
-            calculation (json) : Result of the billateral-IM calculation.
+            dict: Raw calculation result from ICE.
         """
-        date_formated = date.replace(hour=0, minute=0, second=0, microsecond=0)
-        id_calc = read_id_from_file(date_formated, "MV", fund=fund)
+        date_formatted = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        calculation_id = read_id_from_file(date_formatted, type, fund=fund)
 
-        if not id_calc :
+        start = time.time()
 
-            print("[*] Run claculation in ICE for date ", date)
+        if not calculation_id :
+
+            print(f"[*] Running ICE calculation for date {date_formatted}")
             
-            id_calc = self.run_im_bilateral(date, fund=fund)["calculationId"]
-            write_to_file(date, id_calc, "IM", fund=fund)
+            calculation_dict = self.run_im_bilateral(date_formatted, fund=fund)
+            calculation_id = calculation_dict.get("calculationId")
 
-        #print(calculation_id)
-        calculation = self.get_calc_results(id_calc)
+            write_to_file(date_formatted, calculation_id, "IM", fund=fund) # CHECK THIS LINE TODO
+
+        calculation = self.get_calc_results(calculation_id)
         
         return calculation
 
 
-    def get_billateral_im (self, date : str | dt.datetime = dt.datetime.now()) :
+    def get_total_mv_data (self, date : str | dt.datetime, type : str = "MV") -> Optional[Dict] :
         """
-        Get billateral-IM calculation for a specific date
+        Retrieve total Market Value calculation for a given date.
 
         Args:
-            date (date): The date in the format "2020-09-30".
+            date (datetime): Date for which MV is requested.
+            type (str): Type of calculation.
 
         Returns:
-            calculation (json) : Result of the billateral-IM calculation.
+            dict: Full MV calculation result.
         """
-        date_formated = _as_date_str(date) 
-        date.replace(hour=0, minute=0, second=0, microsecond=0)
-        id_calc = read_id_from_file(date_formated, "IM-ptf")
-
-        if not id_calc :
-
-            print("[*] Run claculation in ICE for date ", date)
-            
-            calculation_id = self.run_im_bilateral(date, ctptys=False)['calculationId']
-            print(calculation_id)
-            write_to_file(date, calculation_id, "IM-ptf")
-        
-        calculation = self.get_calc_res(calculation_id)['results']
-        
-        return calculation
-
-
-    def get_total_mv_data (self, date : str) -> Dict :
-        """
-        Get total market value for a specific date
-
-        Args :
-        - date : str -> The date in the format "2020-09-30 00:00:00".
-
-        Returns:
-        - calculation : dict -> Result of the total market value calculation.
-        """
-        calculation_id = read_id_from_file(date, "MV", timeSensitive=False)
+        verified_date = _as_date_str(date)
+        calculation_id = read_id_from_file(verified_date, type, timeSensitive=False)
 
         if not calculation_id : 
 
-            print("[*] Run calculation in ICE for date", date)
-            response = self.run_mv_greeks(date=date[:10])
+            print(f"[*] Running ICE MV calculation for date {verified_date}")
 
-            calculation_id = response.get("calculationId")
+            calculation_dict = self.run_mv_n_greeks(verified_date)
+            calculation_id = calculation_dict.get("calculationId")
 
-            if calculation_id :
-                write_to_file(date, calculation_id, "MV")
+            write_to_file(verified_date, calculation_id, type)
 
-
-        calculation = self.get_calc_results(calculation_id) if calculation_id else {}
+        calculation = self.get_calc_results(calculation_id)
 
         return calculation
     
+    # -------------------------------------------------- Cache --------------------------------------------------
 
-    # Cache mémoire pour éviter de re-fetcher un même id
     @lru_cache(maxsize=128)
     def _cached_calc_results (self, calculation_id : str) -> dict[str] :
         """
-        
+        Fetch and cache ICE calculation results to avoid repeated fetches.
+
+        Args:
+            calculation_id (str): Calculation ID from ICE.
+
+        Returns:
+            dict: Result dictionary.
         """
         return super().get_calc_results(calculation_id)
     
