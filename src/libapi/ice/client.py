@@ -1,4 +1,3 @@
-import os
 import csv
 import requests
 import datetime as dt

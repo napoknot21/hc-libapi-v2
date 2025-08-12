@@ -1,6 +1,7 @@
+from typing import Optional, Dict
 
 from libapi.ice.client import Client
-from libapi.config.parameters import ICE_HOST, ICE_AUTH, ICE_USERNAME, ICE_PASSWORD
+from libapi.config.parameters import ICE_HOST, ICE_AUTH, ICE_USERNAME, ICE_PASSWORD, ICE_URL_SEARCH_TRADES
 
 
 class TradeManager (Client) :
@@ -10,18 +11,35 @@ class TradeManager (Client) :
             self,
             ice_host : str = ICE_HOST,
             ice_auth : str = ICE_AUTH,
-            username : str = ICE_USERNAME,
-            password : str = ICE_PASSWORD,       
-
+            ice_username : str = ICE_USERNAME,
+            ice_password : str = ICE_PASSWORD,
+            
         ) -> None :
         """
-        
+        Initialize the Trade Manager and authenticate against the ICE API.
+
+        This sets up the base API host and authentication headers and performs
+        login using the provided credentials.
         """
         super().__init__(ice_host, ice_auth)
-        self.authenticate(username, password)
+        self.authenticate(ice_username, ice_password)
+
+
+    def authenticate (self, username : str = ICE_USERNAME, password : str = ICE_PASSWORD) -> bool :
+        """
+        Proxy for the base Client.authenticate method.
+
+        Args:
+            username (str): ICE username.
+            password (str): ICE password.
+
+        Returns:
+            bool: True if authentication was successful.
+        """
+        return super().authenticate(username, password)
 
     
-    def get_trades_from_books (self, name_book : list) -> list :
+    def get_trades_from_books (self, name_book : list, endpoint_trade : str = ICE_URL_SEARCH_TRADES) -> Optional[list] :
         """
         This functions return all trades (in a dictionnary) from an specific book (in parameter)
 
@@ -48,8 +66,8 @@ class TradeManager (Client) :
 
         trades = self.get(
 
-            ICE_URL_SEARCH_TRADES,
-            body=payload
+            endpoint=endpoint_trade,
+            json=payload
 
         )
 
@@ -63,7 +81,7 @@ class TradeManager (Client) :
 
             return infos["tradeLegs"]
 
-        return []
+        return None
     
 
     def get_ticker_from_book_hv_equity (self) :

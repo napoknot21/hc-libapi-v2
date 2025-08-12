@@ -6,7 +6,6 @@ from typing import Dict, Optional
 from functools import lru_cache
 
 from libapi.ice.client import Client
-
 from libapi.config.parameters import (
     ICE_AUTH, ICE_HOST, ICE_USERNAME, ICE_PASSWORD,
     BOOK_NAMES_HV_LIST_SUBSET_N1, BOOK_NAMES_WR_LIST_ALL, BOOK_NAMES_HV_LIST_ALL,
@@ -448,7 +447,7 @@ class IceCalculator (Client) :
     # -------------------------------------------------- Cache --------------------------------------------------
 
     @lru_cache(maxsize=128)
-    def _cached_calc_results (self, calculation_id : str) -> dict[str] :
+    def _cached_calc_results (self, calculation_id : str | int) -> dict[str] :
         """
         Fetch and cache ICE calculation results to avoid repeated fetches.
 

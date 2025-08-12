@@ -7,22 +7,39 @@ from libapi.config.parameters import *
 class IceData (Client) :
 
     def __init__ (
-            
+        
             self,
             ice_host : str = ICE_HOST,
             ice_auth : str = ICE_AUTH,
-            username : str = ICE_USERNAME,
-            password : str = ICE_PASSWORD
-
+            ice_username : str = ICE_USERNAME,
+            ice_password : str = ICE_PASSWORD,
+            
         ) -> None :
         """
-        Initialize the IceData instance and authenticate with the ICE API.
-        """ 
+        Initialize the ICE calculator and authenticate against the ICE API.
+
+        This sets up the base API host and authentication headers and performs
+        login using the provided credentials.
+        """
         super().__init__(ice_host, ice_auth)
-        self.authenticate(username, password)
+        self.authenticate(ice_username, ice_password)
 
 
-    def volatility_surface (self, endpoint : str = ICE_URL_QUERY_RESULTS) -> Optional[Dict[Any, Any]]: 
+    def authenticate (self, username : str = ICE_USERNAME, password : str = ICE_PASSWORD) -> bool :
+        """
+        Proxy for the base Client.authenticate method.
+
+        Args:
+            username (str): ICE username.
+            password (str): ICE password.
+
+        Returns:
+            bool: True if authentication was successful.
+        """
+        return super().authenticate(username, password)
+
+
+    def volatility_surface (self, endpoint : str = ICE_URL_QUERY_RESULTS) -> Optional[Dict]: 
         """
         
         """
@@ -35,10 +52,10 @@ class IceData (Client) :
 
         )
 
-        return response.json() if response is not None else None
+        return response
     
     
-    def data_query (self, endpoint : str = ICE_URL_INVOKE_DQUERY) -> Optional[Dict[Any, Any]]:
+    def data_query (self, endpoint : str = ICE_URL_INVOKE_DQUERY) -> Optional[Dict]:
         """
         
         """
@@ -67,4 +84,4 @@ class IceData (Client) :
             }
         )
 
-        return response.json() if response is not None else None
+        return response
