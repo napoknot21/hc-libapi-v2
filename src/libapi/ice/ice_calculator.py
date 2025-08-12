@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import datetime as dt
+from typing import Dict, Optional
 from functools import lru_cache
 
 from libapi.ice.client import Client
 
 from libapi.config.parameters import ICE_AUTH, ICE_HOST, ICE_USERNAME, ICE_PASSWORD
 from libapi.utils.calculations import *
+
+
+def _as_date_str (date : str | dt.datetime) -> str :
+    """
+    
+    """
+    return date.strftime("%Y-%m-%d") if isinstance(date, dt.datetime) else str(date)
 
 
 class IceCalculator (Client) :
@@ -39,21 +47,67 @@ class IceCalculator (Client) :
         """
         super().__init__(ice_host, ice_auth)
 
+        self.auto_auth = bool(auto_auth)
+
         if auto_auth :
 
             if not ice_username or not ice_password :
                 raise ValueError("[-] Missing ICE credentials\n")
             
             self.authenticate(ice_username, ice_password)
-            self.auto_auth = auto_auth
 
 
-    def authenticate (self, username : str, password : str) -> bool :
+    def authenticate (self, username : str = ICE_USERNAME, password : str = ICE_PASSWORD) -> bool :
         """
-        
+        Proxy vers Client.authenticate.
         """
-        return super().authenticate(username, password)
+        self.auto_auth = super().authenticate(username, password)
+
+        return self.auth_auth
     
+    
+    # -------------------------------------------------- IM Bilateral --------------------------------------------------
+
+
+    def run_im_bilateral(
+        
+            self,
+            date: str | dt.datetime,
+            fund : str = "HV",
+            ctptys : bool = True
+        
+        ) -> dict:
+        """
+        Lance un calcul IM bilatéral (POST JSON).
+
+        Args:
+            date: "YYYY-MM-DD" ou datetime.
+            fund: "HV" ou "WR" (selon constantes BOOK_NAME_*).
+            ctptys: inclure une liste de contreparties (sinon portefeuille global).
+
+        Returns:
+            dict: réponse API (incluant souvent "calculationId").
+        """
+        verified_date = date.strftime("%Y-%m-%d") if isinstance(date, dt.datetime) else str(date)
+
+        body = {
+            "valuation": {"type": "EOD", "date": verified_date},
+            "bookNames": BOOK_NAME_HV if fund == "HV" else BOOK_NAME_WR,
+            "model": "SIMM",
+        }
+
+        if ctptys:
+            # orthographe "counterPartyNames"
+            body["counterPartyNames"] = [
+                "Goldman Sachs Group, Inc.",
+                "MorganStanley",
+                "European Depositary Bank",
+                "Saxo Bank",
+            ]
+            body["bookNames"] = BOOK_NAME_HV
+
+        # Lancement = POST JSON (pas GET)
+        return self.post(ICE_URL_BIL_IM_CALC, json=body)  # type: ignore[name-defined]
 
     def run_im_bilateral (self, date : str, fund="HV", ctptys=True) -> dict :
         """
@@ -299,7 +353,7 @@ class IceCalculator (Client) :
         return calculation
 
 
-    def get_total_mv_data (self, date : str) -> dict :
+    def get_total_mv_data (self, date : str) -> Dict :
         """
         Get total market value for a specific date
 
@@ -314,18 +368,25 @@ class IceCalculator (Client) :
         if not calculation_id : 
 
             print("[*] Run calculation in ICE for date", date)
-            calculation_id = self.run_mv_greeks(date=date[:-9])["calculationId"]
+            response = self.run_mv_greeks(date=date[:10])
 
-            write_to_file(date, calculation_id, "MV")
+            calculation_id = response.get("calculationId")
 
-        calculation = self.get_calc_results(calculation_id)
+            if calculation_id :
+                write_to_file(date, calculation_id, "MV")
+
+
+        calculation = self.get_calc_results(calculation_id) if calculation_id else {}
 
         return calculation
     
 
     # Cache mémoire pour éviter de re-fetcher un même id
     @lru_cache(maxsize=128)
-    def _cached_calc_results (self, calculation_id: str) -> dict[str] :
+    def _cached_calc_results (self, calculation_id : str) -> dict[str] :
+        """
+        
+        """
         return super().get_calc_results(calculation_id)
     
 
