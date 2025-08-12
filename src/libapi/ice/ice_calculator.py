@@ -67,7 +67,7 @@ class IceCalculator (Client) :
         return super().authenticate(username, password)
 
     
-    # -------------------------------------------------- IM Bilateral --------------------------------------------------
+    # -------------------------------------------------- IM Bilateral -------------------------------------------------- #
 
 
     def run_im_bilateral(
@@ -239,7 +239,7 @@ class IceCalculator (Client) :
         return calc_res
 
 
-    # -------------------------------------------------- MV and Greeks --------------------------------------------------
+    # -------------------------------------------------- MV and Greeks -------------------------------------------------- #
 
 
     def run_mv_n_greeks (self, date : str | dt.datetime = None, endpoint : str = ICE_URL_INVOKE_CALC) -> Optional[dict] :
@@ -444,7 +444,7 @@ class IceCalculator (Client) :
 
         return calculation
     
-    # -------------------------------------------------- Cache --------------------------------------------------
+    # -------------------------------------------------- Cache -------------------------------------------------- #
 
     @lru_cache(maxsize=128)
     def _cached_calc_results (self, calculation_id : str | int) -> dict[str] :

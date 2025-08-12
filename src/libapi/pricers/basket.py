@@ -1,9 +1,22 @@
 import os
-import pandas as pd
-from datetime import datetime
+import polars as pl
+import datetime as dt
 
 from libapi.config.parameters import columnsInPricer, SAVED_REQUESTS_DIRECTORY_PATH, EQ_PRICER_CALC_PATH
 from libapi.pricers.pricer import Pricer
+
+
+def _as_date_str (date : str | dt.datetime) -> str :
+    """
+    Convert a date or datetime object to a string in "YYYY-MM-DD" format.
+
+    Args:
+        date (str | datetime): The input date.
+
+    Returns:
+        str: Date string in "YYYY-MM-DD" format.
+    """
+    return date.strftime("%Y-%m-%d") if isinstance(date, dt.datetime) else str(date)
 
 class PricerBasket (Pricer) :
 
@@ -12,13 +25,16 @@ class PricerBasket (Pricer) :
         super().__init__()
 
     
-    def post_request_price (self, basket : dict, date=datetime.now().strftime("%Y-%m-%d")) -> pd.DataFrame :
+    def post_request_price (self, basket : dict, date : str | dt.datetime = dt.datetime.now(), endpoint : str = EQ_PRICER_CALC_PATH) -> pl.DataFrame :
         """
         
         """
+        formatted_date = _as_date_str(date)
+
         # Set the ID for the basket
         if "ID" not in basket or basket['ID'] is None :
-            basket['ID'] = 1  # Assuming only one basket per request
+            # Assuming only one basket per request
+            basket['ID'] = 1
 
         # Create the JSON structure for the basket
         basket_json = self.create_json_for_basket(basket)
@@ -32,7 +48,7 @@ class PricerBasket (Pricer) :
             "valuation" : {
 
                 "type" : "EOD",
-                "Date" : date
+                "Date" : formatted_date
 
             },
 
@@ -54,23 +70,24 @@ class PricerBasket (Pricer) :
         # Call the API
         response = self.api.post(
 
-            EQ_PRICER_CALC_PATH,
+            endpoint=endpoint,
             data=payload
 
         )
 
-        
         response_df = self.treat_json_response_pricer(response, [basket])
 
         return response_df
     
 
-    def get_basket_prices (self, basket : dict, date=datetime.now().strftime("%Y-%m-%d")) :
+    def get_basket_prices (self, basket : dict, date : str | dt.datetime = dt.datetime.now()) :
         """
         
         """
+        formatted_date = _as_date_str(date)
+
         # Call the API to price the basket
-        prices = self.post_request_price(basket, date=date)
+        prices = self.post_request_price(basket, date=formatted_date)
 
         # Convert to numeric
         for col in columnsInPricer.keys() :

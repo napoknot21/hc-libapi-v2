@@ -1,14 +1,14 @@
 from libapi.config.parameters import CCYS_ORDER
 
 
-def find_ccy (ccy : str) :
+def find_ccy (ccy : str, ccys_order : list = CCYS_ORDER) :
     """
     
     """
     for i in range(len(CCYS_ORDER)):
     
-        if CCYS_ORDER[i] in ccy:
-            return CCYS_ORDER[i]
+        if ccys_order[i] in ccy:
+            return ccys_order[i]
     
     return None
 
@@ -33,7 +33,7 @@ def create_instrument_dict_ccys (direction, ccy, opt_type, strike, expiry, strai
     return instrument
 
 
-# ------------------- FX instruments -------------------#
+# -------------------------------------------------- FX instruments -------------------------------------------------- #
 
 def get_instruments_samestrike_sell_put_call_fx (ccys, expiries, strikes, direction="Sell") :
     """
@@ -214,7 +214,7 @@ def get_instruments_sell_ps_fx (ccys, expiries, strikes, direction="Sell") :
     return instruments
 
 
-# ------------------- Equity instruments -------------------#
+# -------------------------------------------------- Equity instruments -------------------------------------------------- #
 
 def create_json_instrument_bggticker (direction, bbg_ticker, opt_type, strike, expiry, settlement_date, strat_id, notional=1_000_000, notional_ccy="EUR") :
     """

@@ -1,8 +1,23 @@
 import pandas as pd
-from datetime import datetime
+import polars as pl
+import os
+import datetime as dt
 
 from libapi.ice.trade_manager import TradeManager
 from libapi.config.parameters import PRICING_LOG_FILE_PATH
+
+
+def _as_date_str (date : str | dt.datetime) -> str :
+    """
+    Convert a date or datetime object to a string in "YYYY-MM-DD" format.
+
+    Args:
+        date (str | datetime): The input date.
+
+    Returns:
+        str: Date string in "YYYY-MM-DD" format.
+    """
+    return date.strftime("%Y-%m-%d %H:%M:%S") if isinstance(date, dt.datetime) else str(date)
 
 class Pricer :
 
@@ -10,28 +25,33 @@ class Pricer :
         self.api = TradeManager()
 
     
-    def log_api_call (self, n_instruments) -> None :
+    def log_api_call (self, n_instruments : int, date : str | dt.datetime = dt.datetime.now(), pricing_abs_path : str = PRICING_LOG_FILE_PATH) -> None :
         """
-        
+        Log an API call with the current timestamp and number of instruments.
         """
-        try:
-            logs = pd.read_csv(PRICING_LOG_FILE_PATH)
+        formatted_date = _as_date_str(date)
 
-        except FileNotFoundError:
-
-            logs = pd.DataFrame(columns=["date", "n_instruments"])
-
-        new_row = pd.DataFrame(
-            [
-                {
-                    "date" : datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "n_instruments" : n_instruments
-                }
-            ]
+        # Create new row as Polars DataFrame
+        new_row = pl.DataFrame(
+            {
+                "date": [formatted_date],
+                "n_instruments": [n_instruments]
+            }
         )
-        
-        logs = pd.concat([logs, new_row], ignore_index=True)
-        logs.to_csv(PRICING_LOG_FILE_PATH, index=False)
+
+        if os.path.exists(pricing_abs_path) :
+            
+            # File exists
+            logs = pl.read_csv(pricing_abs_path)
+            logs = pl.concat([logs, new_row], how="vertical")
+
+        else :
+
+            # File does not exists
+            logs = new_row
+
+        print("[+] Log file successfully updated for API call")
+        logs.write_csv(pricing_abs_path)
 
 
     def treat_json_response_pricer (self, json_response, instruments) -> pd.DataFrame :
