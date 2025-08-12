@@ -1,7 +1,7 @@
 from typing import Optional, Dict
 
 from libapi.ice.client import Client
-from libapi.config.parameters import ICE_HOST, ICE_AUTH, ICE_USERNAME, ICE_PASSWORD, ICE_URL_SEARCH_TRADES
+from libapi.config.parameters import ICE_HOST, ICE_AUTH, ICE_USERNAME, ICE_PASSWORD, ICE_URL_SEARCH_TRADES, BOOK_NAMES_HV_LIST_SUBSET_N1, ICE_URL_GET_TRADES
 
 
 class TradeManager (Client) :
@@ -84,7 +84,7 @@ class TradeManager (Client) :
         return None
     
 
-    def get_ticker_from_book_hv_equity (self) :
+    def get_ticker_from_book_hv_equity (self, book_name : str = BOOK_NAMES_HV_LIST_SUBSET_N1[0], ticker_endpoint : str = ICE_URL_SEARCH_TRADES) :
         """
         
         """
@@ -94,7 +94,7 @@ class TradeManager (Client) :
             
                 "type" : "in",
                 "field" : "Book",
-                "values" : BOOK_NAMES[1] # Equity options book
+                "values" : book_name # Equity options book
             
             }
         
@@ -102,8 +102,8 @@ class TradeManager (Client) :
 
         trades = self.get(
 
-            ICE_URL_SEARCH_TRADES,
-            body=payload
+            ticker_endpoint,
+            json=payload
 
         )
 
@@ -128,7 +128,7 @@ class TradeManager (Client) :
         return list(set(sdtickers))
 
 
-    def get_info_trades (self, trade_ids):
+    def get_info_trades (self, trade_ids : list, trades_endpoint : str = ICE_URL_GET_TRADES):
         """
         Get information about specific trades.
 
@@ -140,10 +140,13 @@ class TradeManager (Client) :
         """
         response = self.get(
 
-            ICE_URL_GET_TRADES,
-            body={
+            trades_endpoint,
+
+            json={
+
                 "includeTradeFields": True,
                 "tradeLegIds": trade_ids
+
             }
 
         )
@@ -151,4 +154,4 @@ class TradeManager (Client) :
         return response
     
     
-    
+    # TODO : FINISH REMAINING FUNCTIONS
