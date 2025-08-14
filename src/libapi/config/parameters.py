@@ -1,6 +1,10 @@
 from __future__ import annotations
+
 import os
+import polars as pl
+
 from dotenv import load_dotenv, find_dotenv
+
 
 # If the .env sits next to this file:
 ENV_PATH = find_dotenv()
@@ -87,6 +91,43 @@ COUNTERPARTIES=[
     },
 
 ]
+
+RISKS_UNDERLYING_ASSETS={
+
+    "FX" : {'FX': ['Delta', 'Gamma', "Vega", "MarketData"]},
+    "EQ" : {'EQ': ['Delta', 'Gamma', "Vega", "MarketData"]},
+    "Basket" : {'EQ': ['Delta', 'Gamma', "Vega", "MarketData"]}
+
+}
+
+
+INSTRUMENTS_OVERRIDE={
+
+    "ID" : pl.Int64,
+    "direction" : pl.Utf8, # Could be Sell / Buy
+    "pair" : pl.Utf8, # Could be  
+    "opt_type" : pl.Utf8,
+
+    "strike" : pl.Float64,
+
+    'notional' : pl.Float64 ,
+    'notional_currency' : pl.Utf8,
+    'expiry' : pl.Utf8,
+    'BBGTicker' : dict,
+    'stratid' : pl.Utf8,
+
+}
+
+
+FREQUENCY_DATE_MAP = {
+
+    "Day" : "1d",
+    "Week" : "1w",
+    "Month" : "1mo",
+    "Quarter" : "1q",
+    "Year" : "1y"
+
+}
 
 
 # Columns in the pricer

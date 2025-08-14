@@ -162,7 +162,7 @@ class IceCalculator (Client) :
         return im
     
 
-    def get_bilateral_im_ctpy (self, date : str | dt.datetime = dt.datetime.now(), fund : str = "HV", type : str = "IM") :
+    def get_bilateral_im_ctpy (self, date : str | dt.datetime, fund : str = "HV", type : str = "IM") :
         """
         Get bilateral IM calculation results for all counterparties.
 
@@ -174,7 +174,7 @@ class IceCalculator (Client) :
         Returns:
             list[dict] | None: List of result dictionaries for each counterparty.
         """
-        date_formated = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        date_formated = date.replace(hour=0, minute=0, second=0, microsecond=0) if date is not None else dt.datetime.now()
         calculation_id = read_id_from_file(date_formated, type, fund=fund)
 
         start = time.time()
@@ -201,7 +201,7 @@ class IceCalculator (Client) :
         return calc_res
     
 
-    def get_bilateral_im (self, date : str | dt.datetime = dt.datetime.now(), type : str = "IMT-ptf") :
+    def get_bilateral_im (self, date : str | dt.datetime, type : str = "IMT-ptf") :
         """
         Get bilateral IM calculation at the portfolio level (no ctptys split).
 
@@ -212,7 +212,7 @@ class IceCalculator (Client) :
         Returns:
             list[dict] | None: Result of the bilateral IM calculation.
         """
-        date_formatted  = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        date_formatted  = date.replace(hour=0, minute=0, second=0, microsecond=0) if date is not None else dt.datetime.now()
         calculation_id = read_id_from_file(date_formatted , type)
 
         start = time.time()

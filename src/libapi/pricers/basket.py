@@ -2,7 +2,9 @@ import os
 import polars as pl
 import datetime as dt
 
-from libapi.config.parameters import columnsInPricer, SAVED_REQUESTS_DIRECTORY_PATH, EQ_PRICER_CALC_PATH
+from typing import Dict, List, Optional
+
+from libapi.config.parameters import COLUMNS_IN_PRICER, SAVED_REQUESTS_DIRECTORY_PATH, EQ_PRICER_CALC_PATH
 from libapi.pricers.pricer import Pricer
 
 
@@ -26,10 +28,11 @@ class PricerBasket (Pricer) :
         super().__init__()
 
     
-    def post_request_price (self, basket : dict, date : str | dt.datetime = dt.datetime.now(), endpoint : str = EQ_PRICER_CALC_PATH) -> pl.DataFrame :
+    def request_basket_price_api (self, instruments : List[Dict], date : str | dt.datetime, endpoint : str = EQ_PRICER_CALC_PATH) -> pl.DataFrame :
         """
         
         """
+        response = 
         formatted_date = _as_date_str(date)
 
         # Set the ID for the basket
@@ -91,9 +94,9 @@ class PricerBasket (Pricer) :
         prices = self.post_request_price(basket, date=formatted_date)
 
         # Convert to numeric
-        for col in columnsInPricer.keys() :
+        for col in COLUMNS_IN_PRICER.keys() :
 
-            if columnsInPricer[col] == "Sum" and col in prices.columns : 
+            if COLUMNS_IN_PRICER[col] == "Sum" and col in prices.columns : 
                 prices[col] = pd.to_numeric(prices[col].apply(lambda x : str(x).replace(",", "")), errors='coerce')
 
         return prices

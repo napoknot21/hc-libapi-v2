@@ -13,7 +13,7 @@ def find_ccy (ccy : str, ccys_order : list = CCYS_ORDER) :
     return None
 
 
-def create_instrument_dict_ccys (direction, ccy, opt_type, strike, expiry, strait_id, notional=1_000_000) :
+def create_instrument_dict_ccys (direction : str, ccy : str, opt_type, strike : float, expiry, strait_id, notional : float = 1_000_000) :
     """
     
     """
@@ -339,7 +339,7 @@ def get_instruments_put_eq (BBG_tickers, expiries, strikes, direction="Sell") :
     return instruments
 
 
-def get_instruments_call_eq(BBG_tickers, expiries, strikes, direction="Sell"):
+def get_instruments_call_eq(BBG_tickers, expiries, strikes : list, direction : str = "Sell"):
     """
     
     """
@@ -399,7 +399,7 @@ def get_instruments_sell_cs_eq (BBG_tickers, expiries, strikes, direction="Sell"
     return instruments
 
 
-def get_instruments_sell_ps_eq (BBG_tickers, expiries, strikes, direction="Sell") :
+def get_instruments_sell_ps_eq (BBG_tickers, expiries, strikes : list, direction : str = "Sell") :
     """
     
     """

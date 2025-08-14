@@ -1,10 +1,12 @@
 import tqdm
 import pandas as pd
 import polars as pl
-from datetime import datetime
+import datetime as dt
+
+from typing import Optional, Dict, List
 
 from libapi.pricers.pricer import Pricer
-from libapi.config.parameters import columnsInPricer, FX_PRICER_SOLVE_PATH
+from libapi.config.parameters import COLUMNS_IN_PRICER, FX_PRICER_SOLVE_PATH
 
 from libapi.instruments.instruments import (
 
@@ -36,62 +38,38 @@ class PricerFX (Pricer) :
         super().__init__()
 
 
-    def post_request_price(self, instruments, time, date=datetime.now().strftime("%Y-%m-%d")) :
+    def request_fx_prices_api (
+            
+            self,
+            instruments : List[Dict],
+            time : str | dt.time,
+            date : str | dt.datetime,
+            endpoint : str = FX_PRICER_SOLVE_PATH
+
+        ) -> Optional[Dict] :
         """
-        
-        """
-        for instr in instruments :
+        Request to the API, the price FX for different instruments
 
-            if "ID" not in instr or instr['ID'] is None :
-                instr['ID'] = instruments.index(instr)
+        Args:
+            instruments (list[dict]) : Array of dictionaries for instruments
+            date (str | dt.datetime) : Given date for the price , if is a str instance, should be "YYY-MM-DD" format
+            endpoint (str) : Endpoint to request the information
+            
+        Returns:
+            response (Dict) : Results converted to JSON
 
-        # Log the number of instruments in the request
-        self.log_api_call(len(instruments))
-
-        # Call the API
-        valuation = {
-
-            "type" : "EOD",
-            "Date" : date
-        }
-
-        if len(str(time)) != 0 :
-            valuation["Time"] = time
-        
-        payload = {
-
-            'valuation': valuation,
-            'artifacts': {
-
-                'instruments': ['Spread', 'Theta'],
-                'underlyingAssets': {
-                    'FX': ['Delta', 'Gamma', "Vega", "MarketData"]
-                }
-
-            },
-            "Instruments": [
-
-                self.create_json_for_instruments(
-                    instr['direction'], 
-                    instr['pair'],
-                    instr['opt_type'], 
-                    instr['strike'],
-                    instr['notional'],
-                    instr['notional_currency'],
-                    instr['expiry'],
-                    instr['ID']
-                ) for instr in instruments
-
+        Example:
+            instrument = [
+                {'direction': 'Sell', 'BBGTicker': 'SX5E', 'opt_type': 'Call', 'strike': '100%', 'notional': 1000000, 'expiry': '2024-04-30', 'SettlementDate':'2024-05-02'},
+                {'direction': 'Sell', 'BBGTicker': 'SX5E', 'opt_type': 'Call', 'strike': '100%', 'notional': 1000000, 'expiry': '2024-04-30', 'SettlementDate':'2024-05-02'}
             ]
+        """
+        response = self.request_prices_api(instruments, time, date, "FX", endpoint=endpoint)
 
-        }
-
-        json = self.api.post("/FX/api/v1/Calculate", data=payload)
-
-        return self.treat_json_response_pricer(json, instruments)
+        return self.treat_json_response_pricer(response, instruments)
 
 
-    def get_opts_prices (self, instruments : list, time, date=datetime.now().strftime("%Y-%m-%d")) :
+    def get_opts_prices (self, instruments : List, time :  str | dt.time, date : str | dt.datetime) :
         """
         
         """
@@ -109,15 +87,15 @@ class PricerFX (Pricer) :
             all_prices = pd.concat([all_prices, prices_batch])
         
         # Convert to numeric
-        for col in columnsInPricer.keys() :
+        for col in COLUMNS_IN_PRICER.keys() :
 
-            if columnsInPricer[col] == 'sum' and col in all_prices.columns :
+            if COLUMNS_IN_PRICER[col] == 'sum' and col in all_prices.columns :
                 all_prices[col] = pd.to_numeric(all_prices[col], errors='coerce')
                 
         return all_prices
     
 
-    def price_strategy (self, strategy, ccys : list, expiries : list, strikes, time="00:00", date=datetime.now().strftime("%Y-%m-%d"), details=False) :
+    def price_strategy (self, strategy, ccys : list, expiries : list, strikes, time="00:00", date=dt.datetime.now().strftime("%Y-%m-%d"), details=False) :
         """
         prices a straddle for a given set of currencies, expiries and strikes.
 
@@ -152,7 +130,7 @@ class PricerFX (Pricer) :
         all_prices = self.get_opts_prices(instruments, time, date=date)  # This is a dataFrame
         
         # Filter columns
-        filtered_columns_in_pricer = {k: v for k, v in columnsInPricer.items() if k in all_prices.columns}
+        filtered_columns_in_pricer = {k: v for k, v in COLUMNS_IN_PRICER.items() if k in all_prices.columns}
         
         # Group by stragegy
         all_prices_grouped = all_prices[
@@ -234,7 +212,7 @@ class PricerFX (Pricer) :
         
 
     def solve_for_strike(self, pair, direction, opt_type, expiry, MarketPriceAskPercentBase, time, 
-                         valuation_date=datetime.now().strftime("%Y-%m-%d")) :
+                         valuation_date=dt.datetime.now().strftime("%Y-%m-%d")) :
         """
 
         Args : 

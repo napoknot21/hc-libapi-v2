@@ -1,10 +1,13 @@
 import os, sys
 import pandas as pd
+import datetime as dt
+
+from typing import Optional, List, Dict
 
 from datetime import datetime
 
 from libapi.pricers.pricer import Pricer
-from libapi.config.parameters import columnsInPricer, SAVED_REQUESTS_DIRECTORY_PATH, EQ_PRICER_CALC_PATH, EQ_PRICER_SOLVE_PATH
+from libapi.config.parameters import COLUMNS_IN_PRICER, SAVED_REQUESTS_DIRECTORY_PATH, EQ_PRICER_CALC_PATH, EQ_PRICER_SOLVE_PATH
 
 from libapi.instruments.instruments import (
 
@@ -36,16 +39,17 @@ class PricerEQ (Pricer) :
         super().__init__()
 
 
-    def post_request_price (self, instruments : list[dict], date=datetime.now().strftime("%Y-%m-%d")) :
+    def request_prices_eq_api (self, instruments : List[dict], date = str | dt.datetime, endpoint : str = EQ_PRICER_CALC_PATH) -> Optional[Dict] :
         """
-        
+        Request to the API, the price EQ for different instruments
 
         Args:
             instruments (list[dict]) : Array of dictionaries for instruments
-            date (datetime) : Given date for the price , by default now()
+            date (str | dt.datetime) : Given date for the price , if is a str instance, should be "YYY-MM-DD" format
+            endpoint (str) : Endpoint to request the information
             
         Returns:
-            dt (DataFrame) : Results converted to JSON
+            response (Dict) : Results converted to JSON
 
         Example:
             instrument = [
@@ -53,66 +57,10 @@ class PricerEQ (Pricer) :
                 {'direction': 'Sell', 'BBGTicker': 'SX5E', 'opt_type': 'Call', 'strike': '100%', 'notional': 1000000, 'expiry': '2024-04-30', 'SettlementDate':'2024-05-02'}
             ]
         """
-        # Set the id for each instrument
-        for instr in instruments :
+        response = self.request_prices_api(instruments, None, date, "EQ", endpoint=endpoint)
 
-            if "ID" not in instr or instr['ID'] is None :
-                instr['ID'] = instruments.index(instr)
-    
-        # Create instruments
-        instruments_json = [
-
-            self.create_json_for_instruments(
-
-                instr['direction'], 
-                instr['BBGTicker'],
-                instr['opt_type'], 
-                instr['strike'],
-                instr['notional'],
-                instr['expiry'],
-                instr['ID'],
-                instr['SettlementDate']
-
-            ) for instr in instruments
-
-        ]
+        return response
         
-        # Log the number of instruments in the request
-        self.log_api_call(len(instruments))
-        
-        # Call the API
-        json = self.api.post(
-            
-            EQ_PRICER_CALC_PATH, 
-            data = {
-
-                'valuation' : {
-                    "type" : "EOD",
-                    "Date" : date
-                },
-
-                'artifacts' : {
-
-                    'instruments' : ['Spread', 'Theta'],
-
-                    'underlyingAssets' : {
-                        'EQ' : ['Delta', 'Gamma', "Vega", "MarketData"]
-                    }
-
-                }, 
-                
-                "Instruments" : instruments_json
-
-            }
-            
-        )
-
-        # print(json)
-        # print(instruments_json)
-        dt = self.treat_json_response_pricer(json, instruments)
-        
-        return dt 
-    
 
     def get_opts_prices(self, instruments : list[dict], date=datetime.now().strftime("%Y-%m-%d")) :
         """
@@ -143,9 +91,9 @@ class PricerEQ (Pricer) :
             all_prices = pd.concat([all_prices, prices_batch])
 
         # Convert to numeric
-        for col in columnsInPricer.keys():
+        for col in COLUMNS_IN_PRICER.keys():
             
-            if columnsInPricer[col] == 'sum' and col in all_prices.columns :
+            if COLUMNS_IN_PRICER[col] == 'sum' and col in all_prices.columns :
                 all_prices[col] = pd.to_numeric(all_prices[col].apply(lambda x: str(x).replace(",", "")), errors='coerce')
                 
         return all_prices
@@ -177,7 +125,7 @@ class PricerEQ (Pricer) :
         all_prices = self.get_opts_prices(instruments, date=date)
 
         # Filter columns
-        filtered_columns_in_pricer = {k: v for k, v in columnsInPricer.items() if k in all_prices.columns}
+        filtered_columns_in_pricer = {k: v for k, v in COLUMNS_IN_PRICER.items() if k in all_prices.columns}
         
         # if only two columns, return the dataframes (this means request was unsuccessful)
         if len(all_prices.columns) == 2 :
