@@ -110,7 +110,7 @@ INSTRUMENTS_OVERRIDE={
 
     "strike" : pl.Float64,
 
-    'notional' : pl.Float64 ,
+    'notional' : pl.Float64,
     'notional_currency' : pl.Utf8,
     'expiry' : pl.Utf8,
     'BBGTicker' : dict,

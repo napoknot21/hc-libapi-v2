@@ -2,9 +2,10 @@ import os
 import polars as pl
 import datetime as dt
 
+from functools import partial
 from typing import Dict, List, Optional
 
-from libapi.config.parameters import COLUMNS_IN_PRICER, SAVED_REQUESTS_DIRECTORY_PATH, EQ_PRICER_CALC_PATH
+from libapi.config.parameters import COLUMNS_IN_PRICER, SAVED_REQUESTS_DIRECTORY_PATH, EQ_PRICER_CALC_PATH, RISKS_UNDERLYING_ASSETS
 from libapi.pricers.pricer import Pricer
 
 
@@ -28,101 +29,36 @@ class PricerBasket (Pricer) :
         super().__init__()
 
     
-    def request_basket_price_api (self, instruments : List[Dict], date : str | dt.datetime, endpoint : str = EQ_PRICER_CALC_PATH) -> pl.DataFrame :
+    def request_basket_price_api (
+        
+            self,
+            basket : Dict,
+            asset_dict : Dict = RISKS_UNDERLYING_ASSETS,
+            date : str | dt.datetime = None,
+            endpoint : str = EQ_PRICER_CALC_PATH,
+            instr_type : str = "Basket",
+            payout_ccy : str = "EUR"
+
+        ) -> pl.DataFrame :
         """
         
         """
-        response = 
-        formatted_date = _as_date_str(date)
+        response = super().request_prices_api(
 
-        # Set the ID for the basket
-        if "ID" not in basket or basket['ID'] is None :
-            # Assuming only one basket per request
-            basket['ID'] = 1
-
-        # Create the JSON structure for the basket
-        basket_json = self.create_json_for_basket(basket)
-
-        # Log the number of instruments
-        self.log_api_call(1)
-
-        # Create payload data for the API
-        payload = {
-
-            "valuation" : {
-
-                "type" : "EOD",
-                "Date" : formatted_date
-
-            },
-
-            "Artifacts" : {
-
-                "instruments" : ['Spread', "Theta"],
-                "UnderlyingAssets" : {
-                    
-                    'EQ' : ["Delta", "Gamma", "Vega", "MarketValue"]
-
-                }
-
-            },
-
-            "Instruments" : [basket_json]
-
-        }
-
-        # Call the API
-        response = self.api.post(
-
+            instruments=[basket],
+            asset_class="Basket",
+            asset_dict=asset_dict,
+            date=date,
             endpoint=endpoint,
-            data=payload
+            instr_type=instr_type,
+            payout_ccy=payout_ccy
 
         )
-
+        
         response_df = self.treat_json_response_pricer(response, [basket])
 
         return response_df
-    
 
-    def get_basket_prices (self, basket : dict, date : str | dt.datetime = dt.datetime.now()) :
-        """
-        
-        """
-        formatted_date = _as_date_str(date)
-
-        # Call the API to price the basket
-        prices = self.post_request_price(basket, date=formatted_date)
-
-        # Convert to numeric
-        for col in COLUMNS_IN_PRICER.keys() :
-
-            if COLUMNS_IN_PRICER[col] == "Sum" and col in prices.columns : 
-                prices[col] = pd.to_numeric(prices[col].apply(lambda x : str(x).replace(",", "")), errors='coerce')
-
-        return prices
-    
-
-    def create_json_for_basket (self, basket : dict) -> dict :
-        """
-        
-        """
-        payload = {
-
-            "InstrumentsType" : "Basket",
-            "BuySell" : basket["buySell"],
-            "CallPut" : basket["callPut"],
-            "Strike" : basket["strike"],
-            "Notional" : basket["notional"],
-            "ExpiryDate" : basket["expiryDate"],
-            "SettlementDate" : basket["settlementDate"],
-            "PayoutCurrency" : basket["payoutCurrency"],
-            "UnderlyingAssets" : basket["underlyingAssets"],
-            "ID" : basket["ID"]
-    
-        }
-
-        return payload
-    
 
     def equity_curve (self, basket: dict, start_date : str, end_date : str, frequency="Day") :
         """

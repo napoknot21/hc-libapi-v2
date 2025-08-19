@@ -1,4 +1,5 @@
 import os, sys
+import polars as pl
 import pandas as pd
 import datetime as dt
 
@@ -7,7 +8,7 @@ from typing import Optional, List, Dict
 from datetime import datetime
 
 from libapi.pricers.pricer import Pricer
-from libapi.config.parameters import COLUMNS_IN_PRICER, SAVED_REQUESTS_DIRECTORY_PATH, EQ_PRICER_CALC_PATH, EQ_PRICER_SOLVE_PATH
+from libapi.config.parameters import COLUMNS_IN_PRICER, SAVED_REQUESTS_DIRECTORY_PATH, EQ_PRICER_CALC_PATH, EQ_PRICER_SOLVE_PATH, RISKS_UNDERLYING_ASSETS
 
 from libapi.instruments.instruments import (
 
@@ -39,7 +40,16 @@ class PricerEQ (Pricer) :
         super().__init__()
 
 
-    def request_prices_eq_api (self, instruments : List[dict], date = str | dt.datetime, endpoint : str = EQ_PRICER_CALC_PATH) -> Optional[Dict] :
+    def request_prices_eq_api (
+        
+            self,
+            instruments : List[dict],
+            asset_dict : Dict = RISKS_UNDERLYING_ASSETS,
+            date : str | dt.datetime = None,
+            endpoint : str = EQ_PRICER_CALC_PATH,
+            instr_type : str = "Vanilla"
+        
+        ) -> Optional[Dict] :
         """
         Request to the API, the price EQ for different instruments
 
@@ -57,12 +67,21 @@ class PricerEQ (Pricer) :
                 {'direction': 'Sell', 'BBGTicker': 'SX5E', 'opt_type': 'Call', 'strike': '100%', 'notional': 1000000, 'expiry': '2024-04-30', 'SettlementDate':'2024-05-02'}
             ]
         """
-        response = self.request_prices_api(instruments, None, date, "EQ", endpoint=endpoint)
+        response = super().request_prices_api(
+
+            instruments=instruments,
+            asset_class="EQ",
+            asset_dict=asset_dict,
+            date=date,
+            endpoint=endpoint,
+            instr_type=instr_type
+            
+        )
 
         return response
-        
 
-    def get_opts_prices(self, instruments : list[dict], date=datetime.now().strftime("%Y-%m-%d")) :
+
+    def get_options_prices (self, instruments : list[dict], date : str | dt.datetime = None) :
         """
         
         Args:
@@ -79,15 +98,19 @@ class PricerEQ (Pricer) :
             ]
         """
         # Split instruments into smaller batches
+        if not instruments :
+            return pl.DataFrame()
+
         instrument_batches = self.split_list(instruments, 50)
 
         # Initialize an empty DataFrame to store the results
-        all_prices = pd.DataFrame()
+        all_prices = pl.DataFrame()
+        dfs : list[pl.DataFrame] = []
 
         # Request pricing for each batch of instruments
         for batch in (instrument_batches) : # For each batch, price the instruments
             
-            prices_batch = self.post_request_price(batch, date=date)
+            prices_batch = self.request_prices_eq_api(instruments=batch, date=date)
             all_prices = pd.concat([all_prices, prices_batch])
 
         # Convert to numeric
@@ -144,32 +167,6 @@ class PricerEQ (Pricer) :
         # Return all prices
         return all_prices_grouped
     
-
-    def create_json_for_instruments (self, direction : str, BBGTicker : str, opt_type : str, strike, notional, expiry : str, ID, SettlementDate : str) :
-        """
-        
-        """
-        payload = {
-
-            "InstrumentType": "Vanilla",
-
-            "UnderlyingAsset" : {
-                "BBGTicker": BBGTicker
-            },
-
-            "BuySell" : direction,
-            "CallPut" : opt_type,
-            "Strike" : strike,
-            "Notional" : notional,
-            "ExpiryDate" : expiry,
-            "SettlementDate" : SettlementDate,
-            "Style" : "European",
-            "ID": ID,
-            #"PayoutCurrency":"EUR",
-
-        }
-
-        return payload
     
 
     def get_strike (self, BBG_ticker, opt_type, strike : str, expiry : str, valuation_date=datetime.now().strftime("%Y-%m-%d")) :
@@ -201,7 +198,7 @@ class PricerEQ (Pricer) :
         ## lets get the price of the instrument
         MarketValueMid = prices['MarketValuePercent'].iloc[0] * 1000000 / 100
         # Get the volume
-        volume = 1000000/prices['ReferenceSpot'].str.replace(",", "").astype(float).iloc[0]
+        volume = 1_000_000/prices['ReferenceSpot'].str.replace(",", "").astype(float).iloc[0]
         
         # Price currency
         currency = prices['notional_currency'].iloc[0]

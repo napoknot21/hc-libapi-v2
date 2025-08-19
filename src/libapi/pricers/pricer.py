@@ -6,11 +6,18 @@ import polars as pl
 import datetime as dt
 import pandas as pd
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from libapi.ice.trade_manager import TradeManager
-from libapi.config.parameters import PRICING_LOG_FILE_PATH, FREQUENCY_DATE_MAP, EQ_PRICER_CALC_PATH, RISKS_UNDERLYING_ASSETS
+from libapi.config.parameters import (
+    PRICING_LOG_FILE_PATH, FREQUENCY_DATE_MAP, EQ_PRICER_CALC_PATH, RISKS_UNDERLYING_ASSETS,
+    COLUMNS_IN_PRICER
 
+)
+
+# ---------------------------
+# Utility helpers
+# ---------------------------
 
 def _as_date_str (date : str | dt.datetime = None) -> str :
     """
@@ -44,21 +51,36 @@ def _as_time_str (time : str | dt.time = None) -> str :
     return time.strftime("%H:%M:%S") if isinstance(time, dt.time) else str(time)
 
 
+def _validate_date (date_str: str) -> Optional[dt.datetime] :
+    """
+    Validate `YYYY-MM-DD` and return a datetime or None.
+    """
+    try :
+
+        return dt.datetime.strptime(date_str, "%Y-%m-%d")
+    
+    except Exception :
+        
+        return None
+
+# ---------------------------
+# Core class
+# ---------------------------
 class Pricer :
 
 
-    def __init__ (self, trade_manager : TradeManager = None) -> None :
+    def __init__ (self, trade_manager : TradeManager | None = None) -> None :
         """
         
         """
         self.api = trade_manager if trade_manager is not None else TradeManager()
 
+    # -------- API payload helpers --------
 
     def generate_payload_api (
             
             self,
             id : int,
-            bbg_ticker : int,
             direction : str,
             opt_type : str,
             strike : int,
@@ -77,14 +99,11 @@ class Pricer :
         verified_settl_date = _as_date_str(settl_date)
         verified_expiry_date = _as_date_str(expiry_date)
 
-        underly_asset = { "BBGTicker" : bbg_ticker }
-
         payload = {
 
             "ID" : id,
 
             "InstrumentType" : instr_type,
-            "UnderlyingAsset" : underly_asset,
 
             "BuySell" : direction,
             "CallPut" : opt_type,
@@ -106,13 +125,18 @@ class Pricer :
             
             self,
             instruments : List[Dict],
-            time : str | dt.time,
-            date : str | dt.datetime,
             asset_class : str,
-            asset_dic : Dict = RISKS_UNDERLYING_ASSETS,
+            asset_dict : Dict = RISKS_UNDERLYING_ASSETS,
+            time : str | dt.time | None = None,
+            date : str | dt.datetime | None = None,
             valuation_type : str = "EOD",
+            default_risks : List = ['Spread', 'Theta'],
             endpoint : str = EQ_PRICER_CALC_PATH,
-            default_risks : List = ['Spread', 'Theta']
+            instr_type : str = "Vanilla",
+
+            underly_asset : str | Dict = None,
+
+            payout_ccy : str = "EUR"
 
         ) -> Optional[Dict] :
         """
@@ -125,7 +149,7 @@ class Pricer :
         verfied_time = _as_time_str(time) if time is not None else None
 
         instruments_payload = []
-
+        
         index_len = 0
         for instrument in (instruments) :
             
@@ -135,16 +159,45 @@ class Pricer :
             instrument_payload = self.generate_payload_api(
 
                 instrument["ID"],
-                instrument["BGGTicker"],
                 instrument["direction"],
                 instrument['opt_type'],
                 instrument["strike"],
                 instrument['notional'],
                 instrument['expiry'],
-                instrument['SettlementDate']
+                instrument['SettlementDate'],
+                instr_type=instr_type
 
             )
 
+            if asset_class == "FX" :
+
+                base_ccy = underly_asset[:-3]
+                term_ccy = underly_asset[-3:]
+
+                underlying_asset = {
+
+                    "BaseCurrency" : base_ccy,
+                    "TermCurrency" : term_ccy
+
+                }
+
+            elif asset_class == "EQ" :
+                
+                underlying_asset = {
+
+                    "BBGTicker" : instrument["BBGTicker"]
+
+                }
+                
+            else : # Here we are in "Basket case" (Green Day's reference)
+
+                instrument_payload["PayoutCurrency"] = payout_ccy
+                underlying_asset = instrument["underlyingAssets"]
+
+            
+            instrument_payload["UnderlyingAssets"] = underlying_asset
+
+            instruments_payload.append(instrument_payload)
             index_len += 1
 
         self.log_api_call((index_len + 1)) # Log the lenght of the instruments table
@@ -156,11 +209,10 @@ class Pricer :
 
         }
 
-
         artifacts = {
 
             'instruments' : default_risks,
-            'underlyingAssets' : asset_dic.get(asset_class)
+            'underlyingAssets' : asset_dict.get(asset_class)
 
         }
 
@@ -184,14 +236,14 @@ class Pricer :
         
             self,
             n_instruments : int,
-            date : str | dt.datetime = dt.datetime.now(),
-            pricing_abs_path : str = PRICING_LOG_FILE_PATH
+            date : str | dt.datetime = None,
+            log_abs_path : str = PRICING_LOG_FILE_PATH
         
         ) -> None :
         """
         Log an API call with the current timestamp and number of instruments.
         """
-        formatted_date =  _as_date_str(date) if date is not None else _as_date_str()
+        formatted_date =  _as_date_str(date)
 
         start = time.time()
         
@@ -203,10 +255,10 @@ class Pricer :
             }
         )
 
-        if os.path.exists(pricing_abs_path) :
+        if os.path.exists(log_abs_path) :
             
             # File exists
-            logs = pl.read_csv(pricing_abs_path)
+            logs = pl.read_csv(log_abs_path)
             logs = pl.concat([logs, new_row], how="vertical")
 
         else :
@@ -216,31 +268,42 @@ class Pricer :
 
         print("[+] Log file successfully updated for API call")
 
-        logs.write_csv(pricing_abs_path)
+        logs.write_csv(log_abs_path)
 
         print(f"[-] Information written in the CSV log file into {time.time() - start} seconds")
 
 
-    def flatten_pricer_json (
+    def flatten_pricer_response (
             
             self,
-            json_response : Dict,
+            response : Dict,
             instruments : List[Dict]
 
         ) -> Optional[pl.DataFrame] :
         """
-        
+        Vectorized + Polars-native flattener for pricer JSON (Dict) response.
+
+
         """
-        instrument_list = json_response.get('instruments', [])
+        instrument_list = response.get('instruments', [])
 
         if not instrument_list :
+
             print("[-] Empty instrument list...")
             return None
         
         base = pl.DataFrame(instrument_list)
 
         # Keep minimal base identifiers if present
-        keep_cols = [c for c in ["id"] if c in base.columns]
+        keep_cols = [c for c in ("id",) if c in base.columns]
+
+        if not keep_cols :
+            
+            print("[!] No ID. Nothing to join on. Returning a safe frame")
+            return pl.DataFrame()
+
+        # ---------- Flatten top-level results ----------
+
         base = base.select(keep_cols + [c for c in base.columns if c in ("results", "assets")])
 
         def treat_row(row) :
@@ -295,12 +358,364 @@ class Pricer :
         return data
     
 
-    def split_list (self, lst, max_num) :
+    def flat_pricer_response (self, response : Dict, instruments : List[Dict]) :
+        """
+        
+        """
+        if not response or not instruments :
+
+            print("[-] Null response or Null instrument table. Error")
+            return None
+        
+        instruments_resp = response.get("instruments", [])
+
+        if not instruments_resp : 
+
+            print("[-] No instruments in the JSON response. Error")
+            return None
+        
+        base = pl.DataFrame(instruments_resp)
+        
+        # Ensure we have at least the columns we need
+        needed = [c for c in ("id", "results", "assets") if c in base.columns]
+        base_sel = base.select(needed)
+
+        # Top-level results -> long
+        # results: list[struct{code, value, currency}]
+
+        results_long = (
+
+            base_sel
+                
+                .select(["id", "results"])
+
+        )
+        return None
+    
+
+    def treat_json_response_pricer_polars(
+        
+            self,
+            response: Dict[str, Any],
+            instruments: List[Dict[str, Any]]
+        
+        ) -> pl.DataFrame :
+        """
+        
+        """
+        # Base frame from JSON
+        base = pl.DataFrame(response["instruments"])
+
+        # Keep only what we need early (reduces memory).
+        keep = [c for c in ("id", "results", "assets") if c in base.columns]
+        base = base.select(keep)
+        lbase = base.lazy()
+
+
+        # --- Top-level results -> long
+        # results: list[struct{code, value, currency}]
+        if "results" in base.columns :
+
+            results_long = (
+
+                lbase
+                .select(["id", "results"])
+                .explode("results")
+                .drop_nulls("results")
+
+                .select(
+
+                    pl.col("id"),
+                    pl.col("results").struct.field("code").alias("code"),
+                    pl.col("results").struct.field("value").alias("value"),
+                    pl.col("results").struct.field("currency").alias("currency"),
+                    pl.lit(0).alias("src_order")  # 0 = top-level
+
+                )
+            )
+        
+        else :
+
+            results_long = pl.DataFrame(
+                
+                {
+                    "id" : [],
+                    "code" : [],
+                    "value" : [],
+                    "currency" : [],
+                    "src_order" : []
+                }
+
+            ).lazy()
+
+        # --- First asset name & results -> long
+        if "assets" in base.columns :
+
+            assets_pre = (
+
+                lbase
+                .select(["id", "assets"])
+                .with_columns(
+
+                    first_asset = pl.when(
+
+                        pl.col(
+                            "assets".is_not_null() & (pl.col('assets').list.lengths() > 0)
+                        )
+
+                    ).then(pl.col("assets").list.get(9)).otherwise(None)
+
+                )
+
+            )
+
+            asset_name = (
+                
+                assets_pre
+                .select("id", pl.col("first_asset").struct.field("name").alias("asset"))
+                .unique()
+
+            )
+
+            asset_results_long = (
+
+                assets_pre
+                .select("id", pl.col("first_asset").struct.field("results").alias("asset_res"))
+                .explode("asset_res")
+                .drop_nulls("asset_res")
+
+                .select(
+
+                    pl.col("id"),
+                    pl.col("asset_res").struct.field("code").alias("code"),
+                    pl.col("asset_res").struct.field("value").alias("value"),
+                    pl.col("asset_res").struct.field("currency").alias("currency"),
+                    pl.lit(1).alias("src_order")  # 1 = asset-level (preferred)
+
+                )
+
+            )
+
+        else :
+
+            asset_name = pl.DataFrame(
+
+                {
+                    "id": [],
+                    "asset": []
+                }
+
+            ).lazy()
+
+            asset_results_long = pl.DataFrame(
+            
+                {
+                    "id": [],
+                    "code": [],
+                    "value": [],
+                    "currency": [],
+                    "src_order": []
+                }
+            
+            ).lazy()
+
+        # Combine
+        combined = pl.concat([results_long, asset_results_long], how="vertical_relaxed")
+
+        
+
+
+
+
+
+        # First asset -> asset results long + asset name
+        assets_pre = (
+            base
+            .select(["id", "assets"])
+            .with_columns(
+                first_asset = pl.when(
+                    pl.col("assets").is_not_null() & (pl.col("assets").list.lengths() > 0)
+                ).then(pl.col("assets").list.get(0)).otherwise(None)
+            )
+            .with_columns(
+                asset_name = pl.col("first_asset").struct.field("name"),
+                asset_res  = pl.col("first_asset").struct.field("results")
+            )
+        )
+
+        asset_name = assets_pre.select(["id", "asset_name"]).unique()
+
+        asset_results_long = (
+            assets_pre
+            .select(["id", "asset_res"])
+            .with_columns(pl.col("asset_res").list.explode().alias("result"))
+            .drop_nulls("result")
+            .with_columns(
+                code     = pl.col("result").struct.field("code"),
+                value    = pl.col("result").struct.field("value"),
+                currency = pl.col("result").struct.field("currency"),
+                src_order= pl.lit(1)  # 1 = asset-level (preferred)
+            )
+            .select(["id", "code", "value", "currency", "src_order"])
+        )
+
+        # Combine and prefer asset-level values on collisions via aggregation='last'
+        combined_long = pl.concat([results_long, asset_results_long], how="vertical_relaxed") \
+                        .sort(["id", "code", "src_order"])
+
+        values_wide = combined_long.pivot(
+            index="id", columns="code", values="value", aggregate_function="last"
+        )
+
+        currency_wide = combined_long.pivot(
+            index="id", columns="code", values="currency", aggregate_function="last"
+        )
+        # Suffix currency columns
+        currency_wide = currency_wide.rename({c: f"{c}_currency" for c in currency_wide.columns if c != "id"})
+
+        # Stitch everything together
+        out = (
+            base.select("id").unique()
+            .join(asset_name.rename({"asset_name": "asset"}), on="id", how="left")
+            .join(values_wide, on="id", how="left")
+            .join(currency_wide, on="id", how="left")
+        )
+
+        # Join with instruments
+        if instruments:
+            instr = pl.DataFrame(instruments)
+            sel = [c for c in ['ID','direction','pair','opt_type','strike','notional',
+                            'notional_currency','expiry','BBGTicker','stratid']
+                if c in instr.columns]
+            if sel:
+                out = out.join(instr.select(sel), left_on="id", right_on="ID", how="left")
+
+        return out
+
+
+
+    def flatten_json_response (self, response : Dict, instruments : List[Dict]) :
+        """
+        
+        """
+        instruments_df = pl.DataFrame(instruments)
+        instruments_data = pl.DataFrame(response.get("instruments", []))
+
+        if instruments_df is None or instruments_data is None :
+
+            return pl.DataFrame([])
+        
+        # Early detection of missing "results"
+        if all("results" not in instrument for instrument in instruments_data) :
+
+            return pl.DataFrame(instruments_data)
+        
+
+        # Process each instrument
+        flattened_rows = []
+        for instrument in instruments_data :
+
+            flat_row = {k :v for k, v in instrument.items() if k not in ["results", "assets"]}
+
+            # Handle top_level results
+            for result in instrument.get("results", []) :
+
+                return None
+
+        return None
+
+
+    def flatten_response_json (self, response, instruments, columns_overrides : Dict = COLUMNS_IN_PRICER) :
+        """
+        
+        
+        """
+        df  = pl.DataFrame(response.get("instruments", []))
+        lf  = df.select([c for c in ("id", "results", "assets") if c in df.columns]).lazy()
+
+        top = (
+        
+            lf
+            .select("id", pl.col("results").alias("r"))
+            .explode("r").drop_nulls("r")
+            .select(
+
+                "id",
+                pl.col("r").struct.field("code").alias("code"),
+                pl.col("r").struct.field("value").alias("value"),
+                pl.col("r").struct.field("currency").alias("currency"),
+                pl.lit(0).alias('src')
+            
+            )
+        
+        )
+
+        fa = (lf.select("id",
+            pl.when(pl.col("assets").is_not_null() & (pl.col("assets").list.lengths()>0))
+              .then(pl.col("assets").list.get(0)).otherwise(None).alias("a")))
+        
+        asset = fa.select("id", pl.col("a").struct.field("name").alias("asset")).unique()
+        aset = (fa.select("id", pl.col("a").struct.field("results").alias("r"))
+              .explode("r").drop_nulls("r")
+              .select("id",
+                      pl.col("r").struct.field("code").alias("code"),
+                      pl.col("r").struct.field("value").alias("value"),
+                      pl.col("r").struct.field("currency").alias("currency"),
+                      pl.lit(1).alias("src")))
+
+        # pick best per (id,code): asset wins, then last seen
+        comb = pl.concat([top, aset], how="vertical_relaxed").with_row_count("rn")
+        prio = (pl.col("src").cast(pl.Int64())*pl.lit(10**12) + pl.col("rn").cast(pl.Int64()))
+        best = (comb.group_by(["id","code"])
+                    .agg(value=pl.col("value").take(prio.arg_max()),
+                        currency=pl.col("currency").take(prio.arg_max())))
+
+        # wide values + currencies
+        valw = best.pivot(values="value", index="id", columns="code")
+        curw = (best.pivot(values="currency", index="id", columns="code")
+                 .select([pl.col("id"), pl.all().exclude("id").name.suffix("_currency")]))
+
+        out = (lf.select("id").unique().join(asset, on="id", how="left")
+             .join(valw, on="id", how="left")
+             .join(curw, on="id", how="left"))
+
+
+        if instruments :
+
+            instr = pl.DataFrame(instruments)
+            
+            list_columns = list(columns_overrides.keys())
+            keep = [c for c in list_columns if c in instr.columns]
+
+            if keep:
+                
+                out = out.join(
+                    instr
+                    .select(keep)
+                    .unique(
+
+                        subset=["ID"],
+                        keep="last"
+
+                    ).lazy(),
+
+                    left_on="id",
+                    right_on="ID",
+                    how="left"
+                )
+        
+        return out.collect()
+        
+        
+
+
+
+    def split_list (self, list : List, max_num) :
         """
         
         """
         # Calculate the number of parts needed based on the maximum number of elements per part
-        num_parts = len(lst) // max_num + (1 if len(lst) % max_num != 0 else 0)
+        num_parts = len(list) // max_num + (1 if len(list) % max_num != 0 else 0)
         
         # Initialize the starting index
         start = 0
@@ -310,8 +725,8 @@ class Pricer :
         for _ in range(num_parts) :
 
             # Calculate the end index for the current part
-            end = min(start + max_num, len(lst))
-            parts.append(lst[start:end])
+            end = min(start + max_num, len(list))
+            parts.append(list[start:end])
             
             start = end
         
@@ -375,22 +790,3 @@ class Pricer :
 
         return range_date_list
     
-
-    def _valide_date (self, date_str : str) -> dt.datetime :
-        """
-        Valide date format and convert to datime
-
-        Args:
-            date_str (str) : The string date format to check
-
-        Return:
-            
-        """
-        try :
-
-            return dt.datetime.strptime(date_str, "%Y-%m-%d")
-        
-        except ValueError :
-
-            return None
-
