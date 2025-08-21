@@ -4,14 +4,14 @@ import os
 import time
 import polars as pl
 import datetime as dt
-import pandas as pd
+#import pandas as pd
 
 from typing import Dict, List, Optional, Any
 
 from libapi.ice.trade_manager import TradeManager
 from libapi.config.parameters import (
     PRICING_LOG_FILE_PATH, FREQUENCY_DATE_MAP, EQ_PRICER_CALC_PATH, RISKS_UNDERLYING_ASSETS,
-    COLUMNS_IN_PRICER
+    COLUMNS_IN_PRICER, API_PRICER_LOG_SCHEMA
 
 )
 
@@ -237,6 +237,7 @@ class Pricer :
             self,
             n_instruments : int,
             date : str | dt.datetime = None,
+            schema_override : Dict = API_PRICER_LOG_SCHEMA,
             log_abs_path : str = PRICING_LOG_FILE_PATH
         
         ) -> None :
@@ -258,7 +259,9 @@ class Pricer :
         if os.path.exists(log_abs_path) :
             
             # File exists
-            logs = pl.read_csv(log_abs_path)
+            
+
+            logs = pl.read_csv(log_abs_path, schema_overrides=schema_override)
             logs = pl.concat([logs, new_row], how="vertical")
 
         else :
@@ -356,41 +359,6 @@ class Pricer :
         )
         
         return data
-    
-
-    def flat_pricer_response (self, response : Dict, instruments : List[Dict]) :
-        """
-        
-        """
-        if not response or not instruments :
-
-            print("[-] Null response or Null instrument table. Error")
-            return None
-        
-        instruments_resp = response.get("instruments", [])
-
-        if not instruments_resp : 
-
-            print("[-] No instruments in the JSON response. Error")
-            return None
-        
-        base = pl.DataFrame(instruments_resp)
-        
-        # Ensure we have at least the columns we need
-        needed = [c for c in ("id", "results", "assets") if c in base.columns]
-        base_sel = base.select(needed)
-
-        # Top-level results -> long
-        # results: list[struct{code, value, currency}]
-
-        results_long = (
-
-            base_sel
-                
-                .select(["id", "results"])
-
-        )
-        return None
     
 
     def treat_json_response_pricer_polars(
@@ -593,7 +561,6 @@ class Pricer :
         return out
 
 
-
     def flatten_json_response (self, response : Dict, instruments : List[Dict]) :
         """
         
@@ -624,7 +591,7 @@ class Pricer :
 
         return None
 
-
+    # OPTIMISED FUNCTOIN ?
     def flatten_response_json (self, response, instruments, columns_overrides : Dict = COLUMNS_IN_PRICER) :
         """
         
@@ -690,48 +657,42 @@ class Pricer :
             if keep:
                 
                 out = out.join(
+
                     instr
                     .select(keep)
-                    .unique(
 
+                    .unique(
                         subset=["ID"],
                         keep="last"
-
                     ).lazy(),
 
                     left_on="id",
                     right_on="ID",
                     how="left"
+
                 )
         
         return out.collect()
-        
-        
 
 
-
-    def split_list (self, list : List, max_num) :
+    def split_list (self, list : List[Any], max_num : int) -> List[List[Any]]:
         """
-        
+        Splits a list into smaller sublists (chunks) of a specified maximum size.
+
+        Args:
+            items (List[Any]): The list of elements to split.
+            max_num (int): The maximum number of elements per chunk.
+
+        Returns:
+            List[List[Any]]: A list of sublists, each containing at most `max_num` elements.
+                            If the original list length is not evenly divisible by `max_num`,
+                            the last chunk will contain the remaining elements.
         """
         # Calculate the number of parts needed based on the maximum number of elements per part
-        num_parts = len(list) // max_num + (1 if len(list) % max_num != 0 else 0)
-        
-        # Initialize the starting index
-        start = 0
-        
-        # Iterate through each part
-        parts = []
-        for _ in range(num_parts) :
+        chunks = [list[i:i + max_num] for i in range(0, len(list), max_num)]
 
-            # Calculate the end index for the current part
-            end = min(start + max_num, len(list))
-            parts.append(list[start:end])
-            
-            start = end
-        
-        return parts
-    
+        return chunks
+
 
     def generate_dates (
             

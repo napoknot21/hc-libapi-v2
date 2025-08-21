@@ -129,6 +129,15 @@ FREQUENCY_DATE_MAP = {
 
 }
 
+API_PRICER_LOG_SCHEMA = {
+
+    'date' : pl.Utf8,
+    'n_instruments' : pl.Int32
+
+}
+
+
+
 
 # Columns in the pricer
 COLUMNS_IN_PRICER={

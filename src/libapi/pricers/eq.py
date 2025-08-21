@@ -167,7 +167,6 @@ class PricerEQ (Pricer) :
         # Return all prices
         return all_prices_grouped
     
-    
 
     def get_strike (self, BBG_ticker, opt_type, strike : str, expiry : str, valuation_date=datetime.now().strftime("%Y-%m-%d")) :
         """
@@ -371,21 +370,3 @@ class PricerEQ (Pricer) :
         # return the equity curve
         return all_prices
     
-"""
-pricer = PricerEQ()
-
-# Backtest strategy
-all_prices = pricer.equity_curve(
-    direction='Buy',
-    BBGTicker='BNP FP',
-    opt_type='Put', 
-    strike='100%', 
-    notional=1_000_000, 
-    expiry='2023-12-23', 
-    start_date='2023-01-01', 
-    end_date='2023-12-23', 
-    frequency='Month'
-)
-print(all_prices.describe)
-print(all_prices)
-"""

@@ -14,9 +14,7 @@ from urllib3.util.retry import Retry
 # Suppress only the InsecureRequestWarning from urllib3 needed for insecure connections
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-
 class Client :
-
 
     def __init__ (
         
@@ -197,68 +195,6 @@ class Client :
         except Exception as e :
 
             print("[-] Error while writing logs into the selected file.")
-
-
-    def _build_session (
-        
-            self,
-            retries: int = 5,
-            backoff: float = 0.5,
-            pool_connections: int = 30,
-            pool_maxsize: int = 30
-        
-        ) -> requests.Session:
-        """
-        Create a configured requests.Session with retry and pooling.
-
-        Args:
-            retries (int): Number of retry attempts.
-            backoff (float): Backoff multiplier between retries.
-            pool_connections (int): Number of connection pools.
-            pool_maxsize (int): Max connections per pool.
-
-        Returns:
-            requests.Session: Configured session object.
-        """
-        session = requests.Session()
-
-        retry_cfg = Retry(
-            
-            total=retries,
-            connect=retries,
-            read=retries,
-            status=retries,
-
-            backoff_factor=backoff,
-            
-            status_forcelist=(429, 500, 502, 503, 504),
-            allowed_methods={"GET", "HEAD", "OPTIONS"},
-            
-            raise_on_status=False,
-        
-        )
-
-        adapter = requests.adapters.HTTPAdapter(
-
-            max_retries=retry_cfg,
-            pool_connections=pool_connections,  # nb of pools by schema
-            pool_maxsize=pool_maxsize,          # max connex by host
-        
-        )
-
-        session.mount("http://", adapter)
-        session.mount("https://", adapter)
-
-        # Optional headers by default (ex: User-Agent custom)
-        session.headers.update(
-            {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                # "User-Agent": "hc-libApi/2.0 (+https://tonprojet)"
-            }
-        )
-
-        return session
 
 
     def _make_request (
