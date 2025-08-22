@@ -1,7 +1,11 @@
 from typing import Optional, Dict, List
 
 from libapi.ice.client import Client
-from libapi.config.parameters import ICE_HOST, ICE_AUTH, ICE_USERNAME, ICE_PASSWORD, ICE_URL_SEARCH_TRADES, BOOK_NAMES_HV_LIST_SUBSET_N1, ICE_URL_GET_TRADES
+from libapi.config.parameters import (
+    ICE_HOST, ICE_AUTH, ICE_USERNAME, ICE_PASSWORD,
+    ICE_URL_SEARCH_TRADES, ICE_URL_GET_TRADES, ICE_URL_TRADES_ADD, ICE_URL_GET_PORTFOLIOS,
+    BOOK_NAMES_HV_LIST_SUBSET_N1
+)
 
 
 class TradeManager (Client) :
@@ -39,7 +43,53 @@ class TradeManager (Client) :
         return super().authenticate(username, password)
 
     
-    def get_trades_from_books (self, books : List, endpoint_trade : str = ICE_URL_SEARCH_TRADES) -> Optional[list] :
+    def request_search_trades_from_books (
+            
+            self, books : List | str,
+            endpoint : str = ICE_URL_SEARCH_TRADES,
+            type : str = "in",
+            field : str = "Book"
+
+        ) -> Optional[Dict] :
+        """
+        
+        """
+        if books is None :
+            raise ValueError("[-] None name or void name for the book.")
+        
+        books = [books] if isinstance(books, str) else books
+
+        payload = {
+
+            "query" : {
+            
+                "type" : type,
+                "field" : field,
+                "values" : books  
+            
+            }
+        
+        }
+
+        response = self.post(
+
+            endpoint=endpoint,
+            json=payload
+
+        )
+
+        return response
+
+
+    def get_info_trades_from_books (
+            
+            self,
+            books : List | str,
+            endpoint : str = ICE_URL_SEARCH_TRADES,
+            type : str = "in",
+            field : str = "Book"
+
+        ) -> Optional[list] :
         """
         This functions return all trades (in a dictionnary) from an specific book (in parameter)
 
@@ -49,66 +99,41 @@ class TradeManager (Client) :
         Returns:
             trades (list) : Information about the trades from the specific book
         """
-        if books is None :
-            raise ValueError("[-] None name or void name for the book.")
-        
-        payload = {
+        response = self.request_search_trades_from_books(books, endpoint, type, field)
 
-            'query' : {
-
-                "type" : "in",
-                "field" : "Book",
-                "values" : name_book
-            
-            }
-
-        }
-
-        trades = self.get(
-
-            endpoint=endpoint_trade,
-            json=payload
-
-        )
-
-        if trades is None :
+        if response is None :
             raise RuntimeError("[-] Error during the GET request for trades")
 
-        trade_ids = [trade['tradeLegId'] for trade in trades["tradeLegs"]]
-        infos = self.get_info_trades(trade_ids)
+        trade_legs = response.get("tradeLegs")
+        trade_ids = [trade['tradeLegId'] for trade in trade_legs]
 
-        if infos and "tradeLegs" in infos :
+        infos = self.get_info_trades_from_ids(trade_ids)
+        infos_trades = infos["tradeLegs"] if infos and "tradeLegs" in infos else None
 
-            return infos["tradeLegs"]
-
-        return None
+        return infos_trades
     
 
-    def get_ticker_from_book_hv_equity (self, book_name : str = BOOK_NAMES_HV_LIST_SUBSET_N1[0], ticker_endpoint : str = ICE_URL_SEARCH_TRADES) :
+    def get_ticker_from_book_hv_equity (
+            
+            self,
+            book : str = BOOK_NAMES_HV_LIST_SUBSET_N1[0],
+            endpoint : str = ICE_URL_SEARCH_TRADES,
+            type : str = "in",
+            field : str = "Book"
+        
+        ) -> Optional[List] :
         """
         
         """
-        payload = {
+        response = self.request_search_trades_from_books(book, endpoint, type, field)
 
-            "query" : {
-            
-                "type" : "in",
-                "field" : "Book",
-                "values" : book_name # Equity options book
-            
-            }
-        
-        }
+        if response is None :
+            raise RuntimeError("[-] Error during the GET request for trades")
 
-        trades = self.get(
+        trade_legs = response.get("tradeLegs")
+        trade_ids = [trade['tradeLegId'] for trade in trade_legs]
 
-            ticker_endpoint,
-            json=payload
-
-        )
-
-        trade_ids = [trade["tradeLegId"] for trade in trades["tradeLegs"]]
-        infos = self.get_info_trades(trade_ids)
+        infos = self.get_info_trades_from_ids(trade_ids)
 
         sdtickers =  []
 
@@ -128,7 +153,7 @@ class TradeManager (Client) :
         return list(set(sdtickers))
 
 
-    def get_info_trades (self, trade_ids : list, trades_endpoint : str = ICE_URL_GET_TRADES):
+    def get_info_trades_from_ids (self, trade_ids : List, endpoint : str = ICE_URL_GET_TRADES, include_trade_fields : bool = True) -> Optional[Dict]:
         """
         Get information about specific trades.
 
@@ -138,20 +163,56 @@ class TradeManager (Client) :
         Returns:
         - dict: Information about the specified trades.
         """
+        payload = {
+
+            "includeTradeFields": include_trade_fields,
+            "tradeLegIds": trade_ids
+
+        }
+
         response = self.get(
 
-            trades_endpoint,
-
-            json={
-
-                "includeTradeFields": True,
-                "tradeLegIds": trade_ids
-
-            }
+            endpoint=endpoint,
+            json=payload
 
         )
 
         return response
     
+
+    def post_cash_leg (self, currency, date, notional : float, couterparty : str, pay_rec : str, endpoint : str = ICE_URL_TRADES_ADD) :
+        """
+        
+        """
+        payload = {
+
+
+        }
+
+        response = self.post(
+
+            endpoint=endpoint,
+            data=payload
+
+        )
+
+        return response
+
     
+    def get_all_books (self, endpoint : str = ICE_URL_GET_PORTFOLIOS) :
+        """
+        
+        """
+        response = self.get(
+
+            endpoint=endpoint,
+            json={}
+
+        )
+
+        portfolios = response.get("portfolios")
+
+        return portfolios
+
+
     # TODO : FINISH REMAINING FUNCTIONS

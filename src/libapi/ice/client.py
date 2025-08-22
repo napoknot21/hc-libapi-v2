@@ -97,6 +97,8 @@ class Client :
             response.raise_for_status()
             json_response = response.json()
 
+            status = response.status_code
+
             self.token = json_response.get('token')
             
             if not self.token :
@@ -109,18 +111,30 @@ class Client :
             self.is_auth = True
 
             print("[+] API authentication successfully")
-            
-            return True
 
         except requests.exceptions.HTTPError as e :
-
+            
+            status = e.status_code
             print(f"[-] Authentication Error: {e.response.status_code} - {e.response.text}\n")
 
         except requests.exceptions.RequestException as e :
 
+            status = e.status_code
             print(f"[-] Error during authentication: {e}\n")
 
-        return False
+        finally :
+
+            # Log at the end
+            self.log_request(
+                    
+                    method="POST",
+                    endpoint=full_endpoint,
+                    status_code=status,
+                    success=self.is_auth
+
+                )
+
+        return self.is_auth
 
 
     def get (self, endpoint : str, params : Dict = None, json : Dict = None) -> Optional[Dict[str, Any]] :
@@ -289,7 +303,16 @@ class Client :
     # -------------------------------------------------- Logic functions --------------------------------------------------
 
 
-    def get_calc_results (self, calculation_id : str | int, endpoint : str = ICE_URL_CALC_RES) -> Optional[Dict] :
+    def get_calc_results (
+        
+            self,
+            calculation_id : str | int,
+            endpoint : str = ICE_URL_CALC_RES,
+            calculation_details : str = "Yes",
+            results_home_ccy : str = "Yes",
+            results_portf_ccy : str = "No"
+
+        ) -> Optional[Dict] :
         """
         Get calculation results by calculation ID.
 
@@ -300,18 +323,19 @@ class Client :
         Returns:
             dict | None: Calculation results if available.
         """
+        payload = {
+
+            "calculationId" : int(calculation_id),
+            "IncludeCalculationDetails" : calculation_details,
+            "includeResultsInHomeCurrency" : results_home_ccy,
+            "includeResultsInPortfolioCurrency" : results_portf_ccy
+
+        }
+
         response = self.get(
 
             endpoint=endpoint,
-            
-            json={
-
-                "calculationId" : int(calculation_id),
-                "IncludeCalculationDetails" : "Yes",
-                "includeResultsInHomeCurrency" : "Yes",
-                "includeResultsInPortfolioCurrency" : "No"
-
-            }
+            json=payload
 
         )
 

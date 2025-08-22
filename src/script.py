@@ -8,4 +8,4 @@ ic = IceCalculator()
 
 res = ic.run_im_bilateral(dt.datetime.now())
 print(res)
-ic.get_post_im("2025-07-21")
+#ic.get_post_im("2025-07-21")
