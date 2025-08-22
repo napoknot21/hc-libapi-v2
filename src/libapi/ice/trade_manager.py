@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from libapi.ice.client import Client
 from libapi.config.parameters import ICE_HOST, ICE_AUTH, ICE_USERNAME, ICE_PASSWORD, ICE_URL_SEARCH_TRADES, BOOK_NAMES_HV_LIST_SUBSET_N1, ICE_URL_GET_TRADES
@@ -39,7 +39,7 @@ class TradeManager (Client) :
         return super().authenticate(username, password)
 
     
-    def get_trades_from_books (self, name_book : list, endpoint_trade : str = ICE_URL_SEARCH_TRADES) -> Optional[list] :
+    def get_trades_from_books (self, books : List, endpoint_trade : str = ICE_URL_SEARCH_TRADES) -> Optional[list] :
         """
         This functions return all trades (in a dictionnary) from an specific book (in parameter)
 
@@ -49,7 +49,7 @@ class TradeManager (Client) :
         Returns:
             trades (list) : Information about the trades from the specific book
         """
-        if name_book is None or name_book == "" :
+        if books is None :
             raise ValueError("[-] None name or void name for the book.")
         
         payload = {
