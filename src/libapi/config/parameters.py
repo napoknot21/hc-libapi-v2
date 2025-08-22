@@ -71,6 +71,8 @@ BOOK_NAMES_HV_LIST_SUBSET_N2=list(BOOK_NAMES_HV_SUBSET_N2.split(","))
 # instruments concurrencies
 CCYS_ORDER=['EUR', 'USD', 'CHF', 'CAD', 'JPY', 'GBP', 'SEK', 'NOK']
 
+BANK_COUNTERPARTY_NAME=os.getenv("BANK_COUNTERPARTY_NAME")
+
 
 COUNTERPARTIES=[
 
