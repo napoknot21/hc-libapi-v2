@@ -87,13 +87,13 @@ class TradeManager (Client) :
         """
         return super().authenticate(username, password)
 
-    
+
     def request_search_trades_from_books (
             
             self, books : List | str,
-            endpoint : str = ICE_URL_SEARCH_TRADES,
             type : str = "in",
-            field : str = "Book"
+            field : str = "Book",
+            endpoint : str = ICE_URL_SEARCH_TRADES,
 
         ) -> Optional[Dict] :
         """
@@ -113,7 +113,7 @@ class TradeManager (Client) :
                 "values" : books  
             
             }
-        
+            
         }
 
         response = self.post(
@@ -130,9 +130,9 @@ class TradeManager (Client) :
             
             self,
             books : List | str,
-            endpoint : str = ICE_URL_SEARCH_TRADES,
             type : str = "in",
-            field : str = "Book"
+            field : str = "Book",
+            endpoint : str = ICE_URL_SEARCH_TRADES,
 
         ) -> Optional[list] :
         """
@@ -144,7 +144,7 @@ class TradeManager (Client) :
         Returns:
             trades (list) : Information about the trades from the specific book
         """
-        response = self.request_search_trades_from_books(books, endpoint, type, field)
+        response = self.request_search_trades_from_books(books, type, field, endpoint)
 
         if response is None :
             raise RuntimeError("[-] Error during the GET request for trades")
@@ -162,15 +162,24 @@ class TradeManager (Client) :
             
             self,
             book : str = BOOK_NAMES_HV_LIST_SUBSET_N1[0],
-            endpoint : str = ICE_URL_SEARCH_TRADES,
             type : str = "in",
-            field : str = "Book"
+            field : str = "Book",
+            endpoint : str = ICE_URL_SEARCH_TRADES,
         
         ) -> Optional[List] :
         """
-        
+        Retrieve a list of unique SD tickers associated with trades from a given HV Equity book.
+
+        Args:
+            book (str): The name of the book to search for trades. Defaults to the first in BOOK_NAMES_HV_LIST_SUBSET_N1.
+            type (str): Query type to be passed to the API (e.g., "in"). Defaults to "in".
+            field (str): Field to be used for filtering (e.g., "Book"). Defaults to "Book".
+            endpoint (str): API endpoint for searching trades. Defaults to ICE_URL_SEARCH_TRADES.
+
+        Returns:
+            Optional[List[str]]: A list of unique SD tickers if found, or an empty list if none are available.
         """
-        response = self.request_search_trades_from_books(book, endpoint, type, field)
+        response = self.request_search_trades_from_books(book, type, field,  endpoint)
 
         if response is None :
             raise RuntimeError("[-] Error during the GET request for trades")
@@ -181,8 +190,7 @@ class TradeManager (Client) :
         infos = self.get_info_trades_from_ids(trade_ids)
 
         sdtickers =  []
-
-        for trade in infos["tradeLegs"] :
+        for trade in infos.get("tradeLegs", []) :
 
             try :
                 
@@ -198,7 +206,7 @@ class TradeManager (Client) :
         return list(set(sdtickers))
 
 
-    def get_info_trades_from_ids (self, trade_ids : List, endpoint : str = ICE_URL_GET_TRADES, include_trade_fields : bool = True) -> Optional[Dict]:
+    def get_info_trades_from_ids (self, trade_ids : List, endpoint : str = ICE_URL_GET_TRADES, include_trade_fields : bool = True) -> Optional[Dict] :
         """
         Get information about specific trades.
 
