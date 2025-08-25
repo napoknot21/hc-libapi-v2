@@ -1,7 +1,40 @@
-from typing import Optional, Dict, Any
+import datetime as dt
+from typing import Optional, Dict
 
 from libapi.ice.client import Client
 from libapi.config.parameters import *
+
+
+def _as_date_str (date : str | dt.datetime = None, format : str = "%Y-%m-%d") -> str :
+    """
+    Convert a date or datetime object to a string in "YYYY-MM-DD" format.
+
+    Args:
+        date (str | datetime): The input date.
+
+    Returns:
+        str: Date string in "YYYY-MM-DD" format.
+    """
+    if date is None:
+        date = dt.datetime.now()
+    
+    return date.strftime(format) if isinstance(date, dt.datetime) else str(date)
+
+
+def _as_time_str (time : str | dt.time = None, format : str = "%H:%M:%S") -> str :
+    """
+    Convert a date or datetime object to a string in "YYYY-MM-DD" format.
+
+    Args:
+        date (str | datetime): The input date.
+
+    Returns:
+        str: Date string in "YYYY-MM-DD" format.
+    """
+    if time is None :
+        time = dt.datetime.now().time()
+
+    return time.strftime(format) if isinstance(time, dt.time) else str(time)
 
 
 class IceData (Client) :
@@ -25,7 +58,7 @@ class IceData (Client) :
         self.authenticate(ice_username, ice_password)
 
 
-    def authenticate (self, username : str = ICE_USERNAME, password : str = ICE_PASSWORD) -> bool :
+    def authenticate (self, username : str | None = None, password : str | None = None) -> bool :
         """
         Proxy for the base Client.authenticate method.
 
@@ -36,6 +69,9 @@ class IceData (Client) :
         Returns:
             bool: True if authentication was successful.
         """
+        username = ICE_USERNAME if username is None else username
+        password = ICE_PASSWORD if password is None else password
+
         return super().authenticate(username, password)
 
 
@@ -47,7 +83,9 @@ class IceData (Client) :
 
             endpoint=endpoint,
             data={
+
                 "dataQueryId" : ICE_DATA_VS_ID
+
             }
 
         )
@@ -55,33 +93,54 @@ class IceData (Client) :
         return response
     
     
-    def data_query (self, endpoint : str = ICE_URL_INVOKE_DQUERY) -> Optional[Dict]:
+    def data_query (
+        
+            self,
+            date : str | dt.datetime = None,
+            time : str | dt.time = None,
+            valuation_type : str = "Cut",
+            time_zone : str =  "LND",
+            ex_eod : bool = True,
+            endpoint : str = ICE_URL_INVOKE_DQUERY
+        
+        ) -> Optional[Dict]:
         """
         
         """
+        date = _as_date_str(date)
+        time = _as_time_str(time)
+
+        valuation = {
+
+            "type" : valuation_type, 
+            "date" : date,
+            "timeZone" : time_zone,
+            "useExchangeEOD" : ex_eod
+
+        }
+
+        data_query = {
+                        
+            "artifacts" : ["ValidateOnly"],
+            "assets" : ["MSFT"],
+            "dataType" : "string",
+            "fields" : [ICE_DATA_QUERY_ID],
+            "valuation" : valuation
+
+        }
+
         response = self.post(
 
             endpoint=endpoint,
             data={
                 "dataQueries" : [
-                    {
-                        
-                        "artifacts" : ["ValidateOnly"],
-                        "assets" : ["MSFT"],
-                        "dataType" : "string",
-                        "fields" : [ICE_DATA_QUERY_ID],
 
-                        "valuation" : {
-                            "type": "Cut",
-                            "date": "2024-06-03",
-                            "time": "08:30",
-                            "timeZone": "LND",
-                            "useExchangeEOD": True
-                        }
+                    data_query
 
-                    }
                 ],
             }
+
         )
 
         return response
+    

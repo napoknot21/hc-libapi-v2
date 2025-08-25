@@ -8,6 +8,7 @@ import datetime as dt
 
 from typing import Dict, List, Optional, Any
 
+from libapi.utils.formatter import *
 from libapi.ice.trade_manager import TradeManager
 from libapi.config.parameters import (
     PRICING_LOG_FILE_PATH, FREQUENCY_DATE_MAP, EQ_PRICER_CALC_PATH, RISKS_UNDERLYING_ASSETS,
@@ -15,57 +16,6 @@ from libapi.config.parameters import (
 
 )
 
-# ---------------------------
-# Utility helpers
-# ---------------------------
-
-def _as_date_str (date : str | dt.datetime = None) -> str :
-    """
-    Convert a date or datetime object to a string in "YYYY-MM-DD" format.
-
-    Args:
-        date (str | datetime): The input date.
-
-    Returns:
-        str: Date string in "YYYY-MM-DD" format.
-    """
-    if date is None:
-        date = dt.datetime.now()
-    
-    return date.strftime("%Y-%m-%d") if isinstance(date, dt.datetime) else str(date)
-
-
-def _as_time_str (time : str | dt.time = None) -> str :
-    """
-    Convert a date or datetime object to a string in "YYYY-MM-DD" format.
-
-    Args:
-        date (str | datetime): The input date.
-
-    Returns:
-        str: Date string in "YYYY-MM-DD" format.
-    """
-    if time is None :
-        time = dt.datetime.now().time()
-
-    return time.strftime("%H:%M:%S") if isinstance(time, dt.time) else str(time)
-
-
-def _validate_date (date_str: str) -> Optional[dt.datetime] :
-    """
-    Validate `YYYY-MM-DD` and return a datetime or None.
-    """
-    try :
-
-        return dt.datetime.strptime(date_str, "%Y-%m-%d")
-    
-    except Exception :
-        
-        return None
-
-# ---------------------------
-# Core class
-# ---------------------------
 class Pricer :
 
 
@@ -96,8 +46,8 @@ class Pricer :
 
         Asumes that all parameters are correct or not None (checks the date format)
         """
-        verified_settl_date = _as_date_str(settl_date)
-        verified_expiry_date = _as_date_str(expiry_date)
+        verified_settl_date = date_to_str(settl_date)
+        verified_expiry_date = date_to_str(expiry_date)
 
         payload = {
 
@@ -145,8 +95,8 @@ class Pricer :
         Args:
 
         """
-        verfied_date = _as_date_str(date) if date is not None else None
-        verfied_time = _as_time_str(time) if time is not None else None
+        verfied_date = date_to_str(date) if date is not None else None
+        verfied_time = time_to_str(time) if time is not None else None
 
         instruments_payload = []
         
@@ -244,7 +194,7 @@ class Pricer :
         """
         Log an API call with the current timestamp and number of instruments.
         """
-        formatted_date =  _as_date_str(date)
+        formatted_date =  date_to_str(date)
 
         start = time.time()
         
