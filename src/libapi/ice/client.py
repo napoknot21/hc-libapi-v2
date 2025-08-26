@@ -325,7 +325,7 @@ class Client :
         """
         payload = {
 
-            "calculationId" : int(calculation_id),
+            "calculationId" : str(calculation_id), # Send always in string format, even for integers
             "IncludeCalculationDetails" : calculation_details,
             "includeResultsInHomeCurrency" : results_home_ccy,
             "includeResultsInPortfolioCurrency" : results_portf_ccy

@@ -314,7 +314,7 @@ class TradeManager (Client) :
             date : str | dt.datetime,
             counterparty : str,
             notional : float = 1_000_000,
-            book : str = BOOK_NAMES_HV_LIST_ALL[1],
+            book : str | None = None,
             description : str = "IM - api",
             trade_code : str = "IM",
             trade_name : str = "IM",
@@ -353,6 +353,7 @@ class TradeManager (Client) :
             dict | None: A dictionary representing the trade payload, or None if generation fails.
         """
         verfied_date = _as_date_str(date)
+        book =  BOOK_NAMES_HV_LIST_ALL[1] if book is None else book
 
         settlement = {
 
@@ -398,7 +399,7 @@ class TradeManager (Client) :
         return trade
     
 
-    def post_trade_exo_fx (self, trades, endpoint : str = ICE_URL_TRADES_ADD) :
+    def post_trade_exo_fx (self, trades : List, endpoint : str | None = None) :
         """
         Post a list of exotic FX trades (e.g., Knock-Out, Knock-In, Digital).
         
@@ -409,6 +410,8 @@ class TradeManager (Client) :
         Returns:
             Response object from the API call.
         """
+        endpoint = ICE_URL_TRADES_ADD if endpoint is None else endpoint
+
         return self.post_trade(trades, self.create_trade_trigger_fx, endpoint)
 
 

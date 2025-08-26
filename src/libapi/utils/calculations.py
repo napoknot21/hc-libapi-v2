@@ -1,32 +1,51 @@
-from datetime import datetime, timedelta
-from libapi.config.parameters import FILE_ID_CALCULATION_PATH
+import datetime as dt
+from typing import Optional, Tuple
 
-def write_to_file (date, ID, calculation_type : str, fund : str = "HV", filename : str = FILE_ID_CALCULATION_PATH) -> None :
+from libapi.config.parameters import FILE_ID_CALCULATION_PATH
+from libapi.utils.formatter import date_to_str
+
+def write_to_file (
+    
+        id : str | int,
+        date : str | dt.datetime,
+        calculation_type : str,
+        fund : str = "HV",
+        file_abs_path : str = FILE_ID_CALCULATION_PATH,
+        format_date : str = "%Y-%m-%d %H:%M:%S"
+    
+    ) -> None :
     """
     
     """
-    # Get the current date if not provided
-    if not isinstance(date, str) :
-        date = date.strftime('%Y-%m-%d %H:%M:%S')
-    
-    if not ID :
+    if not id :
         return
+    
+    # Get the current date if not provided
+    verified_date = date_to_str(date, format=format_date)
         
     # Check if the date or ID already exists in the file
-    if check_duplicate(date, ID, fund, filename) :
+    if check_duplicate(date, id, fund, file_abs_path) :
         raise ValueError("Error: Date or ID already exists in the file.")
 
     # Open the file in append mode and write the line
-    with open(filename, 'a') as file :
-        file.write(f"{date} - ID: {ID} - Type: {calculation_type} - Fund: {fund}\n")
+    with open(file_abs_path, 'a') as file :
+        file.write(f"{verified_date} - ID: {id} - Type: {calculation_type} - Fund: {fund}\n")
 
 
-def check_duplicate (date, calculation_type, fund, filename=FILE_ID_CALCULATION_PATH) :
+def check_duplicate (
+
+        id : str | int,
+        date : str | dt.datetime,
+        calculation_type : str,
+        fund : str = "HV",
+        file_abs_path : str = FILE_ID_CALCULATION_PATH
+    
+    ) -> bool :
     """
     
     """
     # Open the file in read mode
-    with open(filename, 'r') as file :
+    with open(file_abs_path, 'r') as file :
 
         # Iterate through each line in the file
         for line in file :
@@ -34,7 +53,7 @@ def check_duplicate (date, calculation_type, fund, filename=FILE_ID_CALCULATION_
             date_line, id_line, type_line, fund_line = split_line(line)
             
             # Check if the date, ID, and calculation type already exist
-            if date_line == date and type_line == calculation_type and fund_line==fund :
+            if date_line == date and id_line == id and type_line == calculation_type and fund_line == fund :
                 # Date, ID, and calculation type already exist
                 return True
             
@@ -42,12 +61,12 @@ def check_duplicate (date, calculation_type, fund, filename=FILE_ID_CALCULATION_
     return False
 
 
-def split_line (input_string : str) :
+def split_line (line : str) -> Tuple[str, str, str, str]:
     """
     
     """
     # Split the input string based on the '-' delimiter
-    parts = input_string.split(' - ')
+    parts = line.split(' - ')
     
     # Extracting date, ID, and type from the parts
     date = parts[0].strip()  # Assuming the date is at the beginning
@@ -58,15 +77,23 @@ def split_line (input_string : str) :
     return date, id_str, type_str, fund
 
 
-def read_id_from_file (date, calculation_type, fund="HV", filename=FILE_ID_CALCULATION_PATH, timeSensitive=True) :
+def read_id_from_file (
+        
+        date : str | dt.datetime,
+        calculation_type : str,
+        fund : str = "HV",
+        timeSensitive : bool = True,
+        format : str = "%Y-%m-%d %H:%M:%S",
+        file_abs_path : str = FILE_ID_CALCULATION_PATH
+
+    ) :
     """
     Returns the ID of calculationtype and fund
     """
-    if not isinstance(date, str):
-        date = date.strftime('%Y-%m-%d %H:%M:%S')
+    verified_date = date_to_str(date, format)
     
     # Open the file in read mode
-    with open(filename, 'r') as file :
+    with open(file_abs_path, 'r') as file :
     
         # Iterate through each line in the file
         for line in file :
@@ -86,7 +113,14 @@ def read_id_from_file (date, calculation_type, fund="HV", filename=FILE_ID_CALCU
     return None
 
 
-def get_last_run_time (calculation_type, fund="HV", filename=FILE_ID_CALCULATION_PATH) :
+def get_last_run_time (
+        
+        calculation_type : str,
+        fund : str = "HV",
+        file_abs_path : str = FILE_ID_CALCULATION_PATH,
+        format : str = "%Y-%m-%d %H:%M:%S"
+        
+    ) :
     """
     
     """
@@ -94,7 +128,7 @@ def get_last_run_time (calculation_type, fund="HV", filename=FILE_ID_CALCULATION
     last_run_id = None
 
     # Open the file in read mode
-    with open(filename, 'r') as file :
+    with open(file_abs_path, 'r') as file :
         
         # Iterate through each line in the file
         for line in file :
@@ -106,7 +140,7 @@ def get_last_run_time (calculation_type, fund="HV", filename=FILE_ID_CALCULATION
             if type_line == calculation_type and fund_line==fund :
             
                 # Convert the date string to a datetime object
-                current_run_time = datetime.strptime(date_line, '%Y-%m-%d %H:%M:%S')
+                current_run_time = date_to_str(date_line, format)
 
                 # Update last_run_time if it is None or the current_run_time is later
                 if last_run_time is None or current_run_time > last_run_time :
@@ -118,14 +152,11 @@ def get_last_run_time (calculation_type, fund="HV", filename=FILE_ID_CALCULATION
     return last_run_time, last_run_id
 
 
-def get_closest_date_of_run_mv (target_date, filename=FILE_ID_CALCULATION_PATH) :
+def get_closest_date_of_run_mv (target_date, filename=FILE_ID_CALCULATION_PATH, format : str = "%Y-%m-%d %H:%M:%S") :
     """
     
     """
-    if not isinstance(target_date, str):
-        target_date = target_date.strftime('%Y-%m-%d %H:%M:%S')
-    
-    target_datetime = datetime.strptime(target_date, '%Y-%m-%d %H:%M:%S')
+    target_datetime = date_to_str(target_date, format)
 
     closest_date = None
     closest_id = None
@@ -139,7 +170,7 @@ def get_closest_date_of_run_mv (target_date, filename=FILE_ID_CALCULATION_PATH) 
             
             if type_line == 'MV':
                 
-                current_datetime = datetime.strptime(date_line, '%Y-%m-%d %H:%M:%S')
+                current_datetime = date_to_str(date_line, format)
                 time_diff = abs(current_datetime - target_datetime)
             
                 if min_time_diff is None or time_diff < min_time_diff:

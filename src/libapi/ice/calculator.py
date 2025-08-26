@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 import datetime as dt
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from functools import lru_cache
 
 from libapi.ice.client import Client
@@ -14,7 +14,7 @@ from libapi.config.parameters import (
 from libapi.utils.calculations import *
 
 
-def _as_date_str (date : str | dt.datetime) -> str :
+def _as_date_str (date : str | dt.datetime, format : str = "%Y-%m-%d") -> str :
     """
     Convert a date or datetime object to a string in "YYYY-MM-DD" format.
 
@@ -24,7 +24,10 @@ def _as_date_str (date : str | dt.datetime) -> str :
     Returns:
         str: Date string in "YYYY-MM-DD" format.
     """
-    return date.strftime("%Y-%m-%d") if isinstance(date, dt.datetime) else str(date)
+    if date is None :
+        date = dt.datetime.now()
+
+    return date.strftime(format) if isinstance(date, dt.datetime) else str(date)
 
 
 class IceCalculator (Client) :
@@ -73,10 +76,10 @@ class IceCalculator (Client) :
     def run_im_bilateral(
         
             self,
-            date: str | dt.datetime,
+            date: str | dt.datetime = None,
             fund : str = "HV",
             ctptys : bool = True,
-            endpoint : str = ICE_URL_BIL_IM_CALC
+            endpoint : str | None = None 
         
         ) -> Optional[Dict]:
         """
@@ -91,6 +94,7 @@ class IceCalculator (Client) :
             dict: API response (usually includes "calculationId").
         """
         verified_date = _as_date_str(date)
+        endpoint = ICE_URL_BIL_IM_CALC if endpoint is None else endpoint
 
         body = {
 
@@ -120,7 +124,14 @@ class IceCalculator (Client) :
         return response
 
 
-    def get_post_im (self, date : str | dt.datetime, counterparty_name : str = "MorganStanley", type : str = "IM") -> Optional[str] :
+    def get_post_im (
+            
+            self,
+            date : str | dt.datetime =  None,
+            counterparty_name : str = "MorganStanley",
+            type : str = "IM"
+        
+        ) -> Optional[str] :
         """
         Get bilateral IM calculation results for all counterparties.
 
@@ -132,8 +143,11 @@ class IceCalculator (Client) :
         Returns:
             list[dict] | None: List of result dictionaries for each counterparty.
         """
+        date = _as_date_str(date)
+
         im = None
         start = time.time()
+
         calculation_id = read_id_from_file(date, type)
         
         if calculation_id is None :
@@ -143,7 +157,7 @@ class IceCalculator (Client) :
             calculation_dict = self.run_im_bilateral(date)
             calculation_id = calculation_dict.get("calculationId")
 
-            write_to_file(date, calculation_id, type)
+            write_to_file(calculation_id, date, type)
         
         calculation = self.get_calc_results(calculation_id)
         calc_res = calculation.get('results') if calculation is not None else None
@@ -162,7 +176,14 @@ class IceCalculator (Client) :
         return im
     
 
-    def get_bilateral_im_ctpy (self, date : str | dt.datetime, fund : str = "HV", type : str = "IM") :
+    def get_bilateral_im_ctpy (
+        
+            self,
+            date : str | dt.datetime = None,
+            fund : str = "HV",
+            type : str = "IM"
+        
+        ) -> Optional[List[Dict]] :
         """
         Get bilateral IM calculation results for all counterparties.
 
@@ -174,8 +195,10 @@ class IceCalculator (Client) :
         Returns:
             list[dict] | None: List of result dictionaries for each counterparty.
         """
-        date_formated = date.replace(hour=0, minute=0, second=0, microsecond=0) if date is not None else dt.datetime.now()
-        calculation_id = read_id_from_file(date_formated, type, fund=fund)
+        verified = _as_date_str(date)
+
+        date_formatted = verified.split(" ")[0] + " 00:00:00" #date.replace(hour=0, minute=0, second=0, microsecond=0) if date is not None else dt.datetime.now()
+        calculation_id = read_id_from_file(date_formatted, type, fund=fund)
 
         start = time.time()
 
@@ -183,10 +206,10 @@ class IceCalculator (Client) :
 
             print(f"[*] Run calculation in ICE for date {date} \n")
             
-            calculation_dict = self.run_im_bilateral(date_formated, fund=fund)
+            calculation_dict = self.run_im_bilateral(date_formatted, fund=fund)
             calculation_id = calculation_dict.get("calculationId")
 
-            write_to_file(date_formated, calculation_id, type, fund=fund)
+            write_to_file(calculation_id, date_formatted, type, fund=fund)
 
         calculation = self.get_calc_results(calculation_id)
         calc_res = calculation.get('results') if calculation is not None else None
@@ -201,7 +224,7 @@ class IceCalculator (Client) :
         return calc_res
     
 
-    def get_bilateral_im (self, date : str | dt.datetime, type : str = "IMT-ptf") :
+    def get_bilateral_im (self, date : str | dt.datetime = None, type : str = "IMT-ptf") :
         """
         Get bilateral IM calculation at the portfolio level (no ctptys split).
 
@@ -212,7 +235,9 @@ class IceCalculator (Client) :
         Returns:
             list[dict] | None: Result of the bilateral IM calculation.
         """
-        date_formatted  = date.replace(hour=0, minute=0, second=0, microsecond=0) if date is not None else dt.datetime.now()
+        verified = _as_date_str(date)
+
+        date_formatted = verified.split(" ")[0] + " 00:00:00" #date.replace(hour=0, minute=0, second=0, microsecond=0) if date is not None else dt.datetime.now()
         calculation_id = read_id_from_file(date_formatted , type)
 
         start = time.time()
@@ -224,7 +249,7 @@ class IceCalculator (Client) :
             calculation_dict = self.run_im_bilateral(date_formatted , ctptys=False)
             calculation_id = calculation_dict.get("calculationId")
 
-            write_to_file(date_formatted , calculation_id, calculation_type=type)
+            write_to_file(calculation_id, date_formatted, calculation_type=type)
         
         calculation = self.get_calc_results(calculation_id)
         calc_res = calculation.get('results') if calculation is not None else None
@@ -304,7 +329,7 @@ class IceCalculator (Client) :
                 results = self.run_mv_n_greeks()
                 id_last = results.get("calculationId") if results is not None else None
 
-                write_to_file(current_time, id_last, type)
+                write_to_file(id_last, current_time, type)
             
             else :
 
@@ -398,7 +423,9 @@ class IceCalculator (Client) :
         Returns:
             dict: Raw calculation result from ICE.
         """
-        date_formatted = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        verified = _as_date_str(date)
+
+        date_formatted = verified.split(" ")[0] + " 00:00:00" #date.replace(hour=0, minute=0, second=0, microsecond=0)
         calculation_id = read_id_from_file(date_formatted, type, fund=fund)
 
         start = time.time()
@@ -410,7 +437,7 @@ class IceCalculator (Client) :
             calculation_dict = self.run_im_bilateral(date_formatted, fund=fund)
             calculation_id = calculation_dict.get("calculationId")
 
-            write_to_file(date_formatted, calculation_id, "IM", fund=fund) # CHECK THIS LINE TODO
+            write_to_file(calculation_id, date_formatted, "IM", fund=fund) # CHECK THIS LINE TODO
 
         calculation = self.get_calc_results(calculation_id)
         
@@ -438,7 +465,7 @@ class IceCalculator (Client) :
             calculation_dict = self.run_mv_n_greeks(verified_date)
             calculation_id = calculation_dict.get("calculationId")
 
-            write_to_file(verified_date, calculation_id, type)
+            write_to_file(calculation_id, verified_date, type)
 
         calculation = self.get_calc_results(calculation_id)
 
