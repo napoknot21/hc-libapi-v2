@@ -6,13 +6,15 @@ from libapi.utils.formatter import date_to_str
 from libapi.config.parameters import CCYS_ORDER
 
 
-def find_ccy (ccy : str, ccys_order : list = CCYS_ORDER) :
+def find_ccy (ccy : str, ccys_order : Optional[List] = None) :
     """
     
     """
+    ccys_oder = CCYS_ORDER if ccys_order is None else ccys_order
+    
     for i in range(len(CCYS_ORDER)):
     
-        if ccys_order[i] in ccy:
+        if ccys_order[i] in ccy :
             return ccys_order[i]
     
     return None

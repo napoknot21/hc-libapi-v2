@@ -21,7 +21,7 @@ class Client :
             self,
             api_host : str,
             auth_url : str,
-            token : str = None,
+            token : Optional[str] = None,
             is_auth : bool = False,
             verify_ssl : bool = False,
             timeout : int = 30
@@ -307,7 +307,7 @@ class Client :
         
             self,
             calculation_id : str | int,
-            endpoint : str = ICE_URL_CALC_RES,
+            endpoint : Optional[str] = None,
             calculation_details : str = "Yes",
             results_home_ccy : str = "Yes",
             results_portf_ccy : str = "No"
@@ -323,6 +323,8 @@ class Client :
         Returns:
             dict | None: Calculation results if available.
         """
+        endpoint = ICE_URL_CALC_RES if endpoint is None else endpoint
+
         payload = {
 
             "calculationId" : str(calculation_id), # Send always in string format, even for integers

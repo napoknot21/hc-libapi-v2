@@ -16,7 +16,26 @@ def date_to_str (date : str | dt.datetime = None, format : str = "%Y-%m-%d") -> 
     if date is None:
         date = dt.datetime.now()
     
-    return date.strftime(format) if isinstance(date, dt.datetime) else str(date)
+    elif isinstance(date, dt.datetime) :
+        date = date
+
+    elif isinstance(date, str) :
+
+        try:
+            date_obj = dt.datetime.strptime(date, format)
+
+        except ValueError :
+            
+            try :
+                date_obj = dt.datetime.fromisoformat(date)
+            
+            except ValueError :
+                raise ValueError(f"Unrecognized date format: '{date}'")
+    
+    else :
+        raise TypeError("date must be a string, datetime, or None")
+
+    return date_obj.strftime(format)
 
 
 def time_to_str (time : str | dt.time = None, format : str = "%H:%M:%S") -> str :

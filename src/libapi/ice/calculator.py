@@ -14,7 +14,7 @@ from libapi.config.parameters import (
 from libapi.utils.calculations import *
 
 
-def _as_date_str (date : str | dt.datetime, format : str = "%Y-%m-%d") -> str :
+def _as_date_str (date : Optional[str | dt.datetime | dt.date] = None, format : str = "%Y-%m-%d") -> str :
     """
     Convert a date or datetime object to a string in "YYYY-MM-DD" format.
 
@@ -40,10 +40,10 @@ class IceCalculator (Client) :
     def __init__ (
         
             self,
-            ice_host : str = ICE_HOST,
-            ice_auth : str = ICE_AUTH,
-            ice_username : str = ICE_USERNAME,
-            ice_password : str = ICE_PASSWORD,
+            ice_host : Optional[str] = None,
+            ice_auth : Optional[str] = None,
+            ice_username : Optional[str] = None,
+            ice_password : Optional[str] = None,
             
         ) -> None :
         """
@@ -52,11 +52,17 @@ class IceCalculator (Client) :
         This sets up the base API host and authentication headers and performs
         login using the provided credentials.
         """
+        ice_host = ICE_HOST if ice_host is None else ice_host
+        ice_auth = ICE_AUTH if ice_auth is None else ice_auth
+
+        ice_username = ICE_USERNAME if ice_username is None else ice_username
+        ice_password = ICE_PASSWORD if ice_password is None else ice_password
+
         super().__init__(ice_host, ice_auth)
         self.authenticate(ice_username, ice_password)
 
 
-    def authenticate (self, username : str = ICE_USERNAME, password : str = ICE_PASSWORD) -> bool :
+    def authenticate (self, username : Optional[str] = None, password : Optional[str] = None) -> bool :
         """
         Proxy for the base Client.authenticate method.
 
@@ -67,23 +73,28 @@ class IceCalculator (Client) :
         Returns:
             bool: True if authentication was successful.
         """
-        return super().authenticate(username, password)
+        username = ICE_USERNAME if username is None else username
+        password = ICE_PASSWORD if password is None else password
+
+        status = super().authenticate(username, password)
+
+        return status
 
     
     # -------------------------------------------------- IM Bilateral -------------------------------------------------- #
 
 
-    def run_im_bilateral(
+    def run_im_bilateral_calculation (
         
             self,
-            date: str | dt.datetime = None,
-            fund : str = "HV",
+            date: Optional[str | dt.datetime] = None,
+            fund : Optional[str] = None,
             ctptys : bool = True,
-            endpoint : str | None = None 
+            endpoint : Optional[str] = None
         
         ) -> Optional[Dict]:
         """
-        Launch a bilateral IM calculation (POST JSON).
+        Launch a bilateral IM calculation (POST JSON) for differents counterparties and/or a given fundation.
 
         Args:
             date (str | datetime): Calculation date.
@@ -94,6 +105,7 @@ class IceCalculator (Client) :
             dict: API response (usually includes "calculationId").
         """
         verified_date = _as_date_str(date)
+        fund = "HV" if fund is None else fund
         endpoint = ICE_URL_BIL_IM_CALC if endpoint is None else endpoint
 
         body = {
@@ -110,7 +122,7 @@ class IceCalculator (Client) :
 
         }
 
-        if ctptys:
+        if ctptys :
             body["counterPartyNames"] = ["Goldman Sachs Group, Inc.", "MorganStanley", "European Depositary Bank", "Saxo Bank"]
 
         # Try with post (default GET)
@@ -127,9 +139,9 @@ class IceCalculator (Client) :
     def get_post_im (
             
             self,
-            date : str | dt.datetime =  None,
-            counterparty_name : str = "MorganStanley",
-            type : str = "IM"
+            date : Optional[str | dt.datetime] = None,
+            ctpy_name : Optional[str] = None,
+            type : Optional[str] = None,
         
         ) -> Optional[str] :
         """
@@ -144,20 +156,24 @@ class IceCalculator (Client) :
             list[dict] | None: List of result dictionaries for each counterparty.
         """
         date = _as_date_str(date)
+        ctpy_name = "MorganStanley" if ctpy_name is None else ctpy_name
+        type = "IM" if type is None else type
 
         im = None
         start = time.time()
 
-        calculation_id = read_id_from_file(date, type)
+        calculation_id = read_id_from_file(date, type) # FUnd HV by default
         
         if calculation_id is None :
 
             print('[i] No calculation id found. Running calculation in ICE for date ', date)
 
-            calculation_dict = self.run_im_bilateral(date)
-            calculation_id = calculation_dict.get("calculationId")
+            #calculation_dict = self.run_im_bilateral(date)
+            #calculation_id = calculation_dict.get("calculationId")
 
-            write_to_file(calculation_id, date, type)
+            #write_to_file(calculation_id, date, type)
+            return None
+            
         
         calculation = self.get_calc_results(calculation_id)
         calc_res = calculation.get('results') if calculation is not None else None
@@ -169,7 +185,7 @@ class IceCalculator (Client) :
 
         for result in calc_res :
 
-            if result['group'] == counterparty_name :
+            if result['group'] == ctpy_name :
                 im = result['postIm']
         
         print(f"[+] Retrieved Post-IM data in {time.time() - start:.2f} seconds")
@@ -179,9 +195,9 @@ class IceCalculator (Client) :
     def get_bilateral_im_ctpy (
         
             self,
-            date : str | dt.datetime = None,
+            date : str | dt.datetime | None = None,
             fund : str = "HV",
-            type : str = "IM"
+            calc_type : str = "IM"
         
         ) -> Optional[List[Dict]] :
         """
@@ -198,7 +214,7 @@ class IceCalculator (Client) :
         verified = _as_date_str(date)
 
         date_formatted = verified.split(" ")[0] + " 00:00:00" #date.replace(hour=0, minute=0, second=0, microsecond=0) if date is not None else dt.datetime.now()
-        calculation_id = read_id_from_file(date_formatted, type, fund=fund)
+        calculation_id = read_id_from_file(date_formatted, calc_type, fund=fund)
 
         start = time.time()
 
@@ -209,7 +225,7 @@ class IceCalculator (Client) :
             calculation_dict = self.run_im_bilateral(date_formatted, fund=fund)
             calculation_id = calculation_dict.get("calculationId")
 
-            write_to_file(calculation_id, date_formatted, type, fund=fund)
+            write_to_file(calculation_id, date_formatted, calc_type, fund=fund)
 
         calculation = self.get_calc_results(calculation_id)
         calc_res = calculation.get('results') if calculation is not None else None
@@ -267,7 +283,7 @@ class IceCalculator (Client) :
     # -------------------------------------------------- MV and Greeks -------------------------------------------------- #
 
 
-    def run_mv_n_greeks (self, date : str | dt.datetime = None, endpoint : str = ICE_URL_INVOKE_CALC) -> Optional[dict] :
+    def run_mv_n_greeks (self, date : str | dt.datetime | None = None, endpoint : str = ICE_URL_INVOKE_CALC) -> Optional[dict] :
         """
         Trigger MV and Greeks calculation.
 
