@@ -1,3 +1,4 @@
+import polars as pl
 import datetime as dt
 from typing import Optional, Dict, List
 
@@ -58,10 +59,10 @@ class TradeManager (Client) :
     def __init__ (
         
             self,
-            ice_host : str = ICE_HOST,
-            ice_auth : str = ICE_AUTH,
-            ice_username : str = ICE_USERNAME,
-            ice_password : str = ICE_PASSWORD,
+            ice_host : Optional[str] = None,
+            ice_auth : Optional[str] = None,
+            ice_username : Optional[str] = None,
+            ice_password : Optional[str] = None,
             
         ) -> None :
         """
@@ -70,11 +71,17 @@ class TradeManager (Client) :
         This sets up the base API host and authentication headers and performs
         login using the provided credentials.
         """
+        ice_host = ICE_HOST if ice_host is None else ice_host
+        ice_auth = ICE_AUTH if ice_auth is None else ice_auth
+        
+        ice_username = ICE_USERNAME if ice_username is None else ice_username
+        ice_password = ICE_PASSWORD if ice_password is None else ice_password
+
         super().__init__(ice_host, ice_auth)
         self.authenticate(ice_username, ice_password)
 
 
-    def authenticate (self, username : str = ICE_USERNAME, password : str = ICE_PASSWORD) -> bool :
+    def authenticate (self, username : Optional[str] = None, password : Optional[str] = None) -> bool :
         """
         Proxy for the base Client.authenticate method.
 
@@ -85,23 +92,31 @@ class TradeManager (Client) :
         Returns:
             bool: True if authentication was successful.
         """
+        username = ICE_USERNAME if username is None else username
+        password = ICE_PASSWORD if password is None else password
+
         return super().authenticate(username, password)
 
 
-    def request_search_trades_from_books (
+    # -------------------------------------------- Get request operations  --------------------------------------------  
+
+
+    def get_trades_from_books (
             
-            self, books : List | str,
-            type : str = "in",
+            self,
+            books : List[str] | str,
+            type : str = "In",
             field : str = "Book",
-            endpoint : str = ICE_URL_SEARCH_TRADES,
+            endpoint : Optional[str] = None,
 
         ) -> Optional[Dict] :
         """
-        
+        Returns all trades from selected books / Portfolios
         """
         if books is None :
             raise ValueError("[-] None name or void name for the book.")
         
+        endpoint = ICE_URL_SEARCH_TRADES if endpoint is None else endpoint
         books = [books] if isinstance(books, str) else books
 
         payload = {
@@ -126,15 +141,127 @@ class TradeManager (Client) :
         return response
 
 
+    def get_trades_from_books_by_date (
+            
+            self,
+            books : List[str] | str,
+            date : Optional[str | dt.datetime] = None,
+            query_type : str = "And",
+            type : str = "In",
+            field_trade : str = "TradeDate",
+            field_book : str = "Book",
+            endpoint : Optional[str] = None
+        
+        ) -> Optional[Dict] :
+        """
+        
+        """
+        date = _as_date_str(date)
+        endpoint = ICE_URL_SEARCH_TRADES if endpoint is None else endpoint
+        books = [books] if isinstance(books, str) else (None if not isinstance(books, list) else books)
+
+        trade_date_query = {
+
+            "type" : type,
+            "field" : field_trade,
+            "values" : date
+
+        }
+
+        book_names_query = {
+
+            "type" : type,
+            "field" : field_book,
+            "values" : books
+
+        }
+
+        payload = {
+
+            "type" : query_type,
+            "queries" : [
+
+                trade_date_query,
+                book_names_query
+
+            ]
+
+
+        }
+
+        response = self.post(
+            
+            endpoint=endpoint,
+            json=payload
+
+        )
+
+        
+        if response is None :
+            return None
+        
+        """
+        trade_legs = response.get("tradeLegs")
+        trade_ids = [trade['tradeLegId'] for trade in trade_legs]
+
+        trade_infos = self.get_info_trades_from_ids(trade_ids)
+
+        if trade_infos is None :
+            return None
+
+        infos_trades = trade_infos["tradeLegs"] if trade_infos and "tradeLegs" in trade_infos else None
+        """
+
+        return response
+
+
+    def get_info_trades_from_ids (
+        
+            self,
+            trade_ids : List,
+            include_trade_fields : bool = True,
+            endpoint : Optional[str] = None,
+        
+        ) -> Optional[Dict] :
+        """
+        Get information about specific trades.
+
+        Parameters:
+        - trade_ids (list): List of trade IDs.
+
+        Returns:
+        - dict: Information about the specified trades.
+        """
+        endpoint = ICE_URL_GET_TRADES if endpoint is None else endpoint
+
+        payload = {
+
+            "includeTradeFields": include_trade_fields,
+            "tradeLegIds": trade_ids
+
+        }
+
+        response : Dict = self.get(
+
+            endpoint=endpoint,
+            json=payload
+
+        )
+
+        # Format of the response
+        # response : Dict = { "TradeLegs" : List[Dict[str, Any]] , "RequestId" : str , "status" : str }
+        return response
+
+
     def get_info_trades_from_books (
             
             self,
-            books : List | str,
-            type : str = "in",
+            books : List[str] | str,
+            type : str = "In",
             field : str = "Book",
-            endpoint : str = ICE_URL_SEARCH_TRADES,
+            endpoint : Optional[str] = None
 
-        ) -> Optional[list] :
+        ) -> Optional[Dict] :
         """
         This functions return all trades (in a dictionnary) from an specific book (in parameter)
 
@@ -144,21 +271,26 @@ class TradeManager (Client) :
         Returns:
             trades (list) : Information about the trades from the specific book
         """
-        response = self.request_search_trades_from_books(books, type, field, endpoint)
+        endpoint = ICE_URL_SEARCH_TRADES if endpoint is None else endpoint
+
+        # Format of the response
+        # response := { "TradeLegs" : List[Dict[str, Any]] , "RequestId" : str , "status" : str }
+        response = self.get_trades_from_books(books, type, field, endpoint)
 
         if response is None :
             raise RuntimeError("[-] Error during the GET request for trades")
 
-        trade_legs = response.get("tradeLegs")
-        trade_ids = [trade['tradeLegId'] for trade in trade_legs]
+        trade_legs : List[Dict] = response.get("tradeLegs")
+        trade_ids : List = [trade['tradeLegId'] for trade in trade_legs]
 
-        infos = self.get_info_trades_from_ids(trade_ids)
-        infos_trades = infos["tradeLegs"] if infos and "tradeLegs" in infos else None
+        # Format of the response
+        # response : Dict = { "TradeLegs" : List[Dict[str, Any]] , "RequestId" : str , "status" : str }
+        response : Optional[Dict] = self.get_info_trades_from_ids(trade_ids)
 
-        return infos_trades
-    
+        return response
 
-    def get_ticker_from_book_hv_equity (
+
+    def get_tickers_from_hv_equity_book (
             
             self,
             book : str = BOOK_NAMES_HV_LIST_SUBSET_N1[0],
@@ -179,8 +311,13 @@ class TradeManager (Client) :
         Returns:
             Optional[List[str]]: A list of unique SD tickers if found, or an empty list if none are available.
         """
-        response = self.request_search_trades_from_books(book, type, field,  endpoint)
-
+        # Format of the response
+        # response = List[Dict[str, Any]] where each Dict[str, Any] is a TradeLeg information
+        response = self.get_trades_from_books(book, type, field,  endpoint)
+        
+        import time
+        start = time.time()
+        
         if response is None :
             raise RuntimeError("[-] Error during the GET request for trades")
 
@@ -189,49 +326,68 @@ class TradeManager (Client) :
 
         infos = self.get_info_trades_from_ids(trade_ids)
 
-        sdtickers =  []
-        for trade in infos.get("tradeLegs", []) :
+        sdtickers = set()
+        list_trades_lists : List[Dict] = infos.get("tradeLegs", [])
+
+        for trade in list_trades_lists :
+            
+            instrument = trade.get("instrument", {})
 
             try :
                 
-                ticker = trade.get("instrument", {}).get("underlyingAsset", {}).get("sdTicker")
+                ticker = instrument.get("underlyingAsset", {}).get("sdTicker")
 
                 if ticker :
-                    sdtickers.append(ticker)
+                    sdtickers.add(ticker)
 
             except :
 
-                continue # skip amlformed entries
+                continue # skip malformed or imcomplete entries
+        
+        print(f"[*] Operation done in {time.time() - start} seconds")
 
-        return list(set(sdtickers))
+        return list(sdtickers)
+    
 
-
-    def get_info_trades_from_ids (self, trade_ids : List, endpoint : str = ICE_URL_GET_TRADES, include_trade_fields : bool = True) -> Optional[Dict] :
+    def get_all_existing_portfolios (self, endpoint : Optional[str] = None) -> Optional[List[Dict]] :
         """
-        Get information about specific trades.
-
-        Parameters:
-        - trade_ids (list): List of trade IDs.
-
-        Returns:
-        - dict: Information about the specified trades.
+        
         """
-        payload = {
+        endpoint = ICE_URL_GET_PORTFOLIOS if endpoint is None else endpoint
 
-            "includeTradeFields": include_trade_fields,
-            "tradeLegIds": trade_ids
-
-        }
-
+        # Format
+        # response := { "portfolios" : List[Dict[str, Any]] , "requestId" : str , "status" : str }
         response = self.get(
 
             endpoint=endpoint,
-            json=payload
+            json={}
 
         )
 
-        return response
+        portfolios : List[Dict] = response.get("portfolios", [])
+
+        return portfolios
     
+
+    def get_all_existing_portfolio_names (self, endpoint : Optional[str] = None) -> Optional[List] :
+        """
+        
+        """
+        endpoint = ICE_URL_GET_PORTFOLIOS if endpoint is None else endpoint
+
+        response = self.get_all_existing_portfolios(endpoint)
+
+        names = set()
+        for portfolio in response :
+
+            name = portfolio.get("portfolioName")
+            names.add(name)
+
+        return list(names)
+
+
+    # -------------------------------------------- Booking operations --------------------------------------------  
+
 
     def post_cash_leg (self, currency : str, date : str | dt.datetime, notional : float, counterparty : str, pay_rec : str = "Pay", endpoint : str = ICE_URL_TRADES_ADD) :
         """
@@ -259,14 +415,17 @@ class TradeManager (Client) :
             notional : float | int,
             book : str,
             counterparty : str,
-            bank : str = BANK_COUNTERPARTY_NAME,
+            bank : Optional[str] = None,
             direction : str = "Pay",
-            endpoint : str = ICE_URL_TRADES_ADD
+            endpoint : Optional[str] = None
 
         ) :
         """
         
         """
+        bank = BANK_COUNTERPARTY_NAME if bank is None else bank
+        endpoint = ICE_URL_TRADES_ADD if endpoint is None else endpoint
+
         payload_bn = self.generate_cash_trade_payload(currency, date, bank if direction == "Pay" else counterparty, notional, book, pay_recv="Pay")
         payload_cp = self.generate_cash_trade_payload(currency, date, counterparty if direction == "Pay" else bank, notional, book)
 
@@ -282,20 +441,44 @@ class TradeManager (Client) :
         return response
 
     
-    def get_all_books (self, endpoint : str = ICE_URL_GET_PORTFOLIOS) :
+    def post_trade_exotic_fx (self, trades : List, endpoint : str | None = None) :
         """
+        Post a list of exotic FX trades (e.g., Knock-Out, Knock-In, Digital).
         
+        Args:
+            trades (List[dict]): A list of raw trade data dicts.
+            endpoint (str): API endpoint to which trades will be posted.
+        
+        Returns:
+            Response object from the API call.
         """
-        response = self.get(
+        endpoint = ICE_URL_TRADES_ADD if endpoint is None else endpoint
+
+        return self.post_trade(trades, self.create_trade_trigger_fx, endpoint)
+
+
+    def post_trade (self, trades : List, creation_trade_function : callable, endpoint : str = ICE_URL_TRADES_ADD) :
+        """
+        GENERAL FUNCTION FOR SEND A POST TO THE ENDPOINT 
+        """
+        trades_list = []
+        
+        for trade in trades :
+
+            trade_payload = creation_trade_function(trade)
+            trades_list.append(trade_payload)
+
+        response = self.post(
 
             endpoint=endpoint,
-            json={}
+            json=trades_list
 
         )
 
-        portfolios = response.get("portfolios")
+        return response
 
-        return portfolios
+
+    # -------------------------------------------- Payload Generators --------------------------------------------  
 
 
     def generate_trade_trigger_fx (self, trade : Dict) :
@@ -399,41 +582,6 @@ class TradeManager (Client) :
         return trade
     
 
-    def post_trade_exo_fx (self, trades : List, endpoint : str | None = None) :
-        """
-        Post a list of exotic FX trades (e.g., Knock-Out, Knock-In, Digital).
-        
-        Args:
-            trades (List[dict]): A list of raw trade data dicts.
-            endpoint (str): API endpoint to which trades will be posted.
-        
-        Returns:
-            Response object from the API call.
-        """
-        endpoint = ICE_URL_TRADES_ADD if endpoint is None else endpoint
-
-        return self.post_trade(trades, self.create_trade_trigger_fx, endpoint)
-
-
-    def post_trade (self, trades : List, creation_trade_function : callable, endpoint : str = ICE_URL_TRADES_ADD) :
-        """
-        GENERAL FUNCTION FOR SEND A POST TO THE ENDPOINT 
-        """
-        trades_list = []
-        
-        for trade in trades :
-
-            trade_payload = creation_trade_function(trade)
-            trades_list.append(trade_payload)
-
-        response = self.post(
-
-            endpoint=endpoint,
-            json=trades_list
-
-        )
-
-        return response
 
 
     
