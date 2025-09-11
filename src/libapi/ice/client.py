@@ -1,11 +1,13 @@
+import os
 import csv
+import json
 import requests
 import datetime as dt
 
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from libapi.config.parameters import API_LOG_REQUEST_FILE_CSV_PATH, ICE_URL_CALC_RES, API_LOG_REQUEST_FILE_PATH
+from libapi.config.parameters import API_LOG_REQUEST_FILE_CSV_PATH, ICE_URL_CALC_RES, API_LOG_REQUEST_FILE_PATH, LIBAPI_CACHE_DIR_ABS_PATH, LIBAPI_CACHE_FILE_BASENAME
 
 from urllib.parse import urljoin
 from urllib3.exceptions import InsecureRequestWarning
@@ -24,7 +26,8 @@ class Client :
             token : Optional[str] = None,
             is_auth : bool = False,
             verify_ssl : bool = False,
-            timeout : int = 30
+            timeout : int = 30,
+            token_cache_path : Optional[str | Path] = "None"
 
         ) -> None :
         """
@@ -58,6 +61,8 @@ class Client :
 
         self.session = requests.Session()
 
+        self.token_cache_path = os.path.join(LIBAPI_CACHE_DIR_ABS_PATH, LIBAPI_CACHE_FILE_BASENAME)
+
 
     def authenticate (self, username : str, password : str, url_endpoint : str = None) -> bool :
         """
@@ -79,6 +84,18 @@ class Client :
         }
 
         full_endpoint = url_endpoint or self.full_auth_url
+
+        self.token = self._load_cached_token()
+
+        if self.token :
+
+            # We have a token here
+            self.headers["AuthenticationToken"] = self.token
+            self.is_auth = True
+
+            print("[+] Token and authentification loaded from cache")
+
+            return self.is_auth
 
         try :
 
@@ -105,6 +122,8 @@ class Client :
             
                 print("[-] Auth succeeded but no token in the response...")
                 return False
+
+            self._save_token_to_cache(self.token)
 
             # We have a non None token here
             self.headers["AuthenticationToken"] = self.token
@@ -344,4 +363,81 @@ class Client :
         return response
     
 
+    # -------------------------------------------------- Auxiliar functions --------------------------------------------------
+
     
+    def _load_cached_token (self) -> Optional[str] :
+        """
+        
+        """
+        try :
+
+            if os.path.exists(self.token_cache_path) :
+                
+                with open(self.token_cache_path, "r", encoding="utf-8") as f :
+
+                    data = json.load(f)
+
+                    token = data.get("token")
+                    timestamp_str = data.get("timestamp")
+                    expiration = data.get("expiration", 0)
+
+                    if token and timestamp_str :
+
+                        timestamp = dt.datetime.fromisoformat(timestamp_str)
+                        age = (dt.datetime.now() - timestamp).total_seconds()
+                        
+                        if age < expiration :
+                            return token
+                        
+        except Exception as e :
+            
+            print("[-] Error loading token from cache:", e)
+        
+        return None
+
+
+    def _save_token_to_cache (self, token : Optional[str] = None, expiration : int = 3600) -> bool :
+        """
+        Auxiliar function for creating a cache file storing the token.
+        Will create the cache directory if it does not exist.
+        
+        Args:
+            token (str, optional): The token to save.
+            expiration (int): Time in seconds before the token is considered expired.
+
+        Returns:
+            bool: True if the token was saved successfully, False otherwise.
+        """
+        status = False
+
+        if token is None :
+
+            print("[-] Error saving token to cache: No token found")
+            return status
+
+        try :
+
+            data = {
+
+                "token": token,
+                "timestamp": dt.datetime.now().isoformat(),
+                "expiration": expiration
+            
+            }
+            
+            # Ensure parent directory exists
+            # Ensure parent directory exists
+            cache_dir = os.path.dirname(self.token_cache_path)
+            os.makedirs(cache_dir, exist_ok=True)
+        
+            with open(self.token_cache_path, "w", encoding="utf-8") as f :
+                json.dump(data, f)
+            
+            status = True
+
+        except Exception as e :
+
+            print("[-] Error saving token to cache:", e)
+
+        return status
