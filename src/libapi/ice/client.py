@@ -7,8 +7,11 @@ import datetime as dt
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from libapi.config.parameters import API_LOG_REQUEST_FILE_CSV_PATH, ICE_URL_CALC_RES, API_LOG_REQUEST_FILE_PATH, LIBAPI_CACHE_DIR_ABS_PATH, LIBAPI_CACHE_FILE_BASENAME
-
+from libapi.config.parameters import (
+    LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_CACHE_DIR_ABS_PATH,
+    LIBAPI_CACHE_TOKEN_BASENAME, LIBAPI_LOGS_REQUESTS_BASENAME,
+    ICE_URL_GET_CALC_RES
+)
 from urllib.parse import urljoin
 from urllib3.exceptions import InsecureRequestWarning
 from urllib3.util.retry import Retry
@@ -61,17 +64,18 @@ class Client :
 
         self.session = requests.Session()
 
-        self.token_cache_path = os.path.join(LIBAPI_CACHE_DIR_ABS_PATH, LIBAPI_CACHE_FILE_BASENAME)
+        TOKEN_CACHE_ABS_PATH = os.path.join(LIBAPI_CACHE_DIR_ABS_PATH, LIBAPI_CACHE_TOKEN_BASENAME)
+        self.token_cache_path = TOKEN_CACHE_ABS_PATH if token_cache_path is None else token_cache_path
 
 
-    def authenticate (self, username : str, password : str, url_endpoint : str = None) -> bool :
+    def authenticate (self, username : str, password : str, endpoint : Optional[str] = None) -> bool :
         """
         Authenticate with the API using username and password.
 
         Args:
             username (str): API username.
             password (str): API password.
-            url_endpoint (str, optional): Alternative authentication endpoint.
+            endpoint (str, optional): Alternative authentication endpoint.
 
         Returns:
             bool: True if authentication succeeds and a token is received, else False.
@@ -83,7 +87,7 @@ class Client :
         
         }
 
-        full_endpoint = url_endpoint or self.full_auth_url
+        full_endpoint = endpoint or self.full_auth_url
 
         self.token = self._load_cached_token()
 
@@ -192,7 +196,7 @@ class Client :
             endpoint : str,
             status_code : int = 404,
             success : bool = False,
-            log_abs_path : str = API_LOG_REQUEST_FILE_CSV_PATH
+            log_abs_path : Optional[str] = None
         
         ) -> None :
         """
@@ -205,6 +209,10 @@ class Client :
             success (bool): Whether the request succeeded.
             log_abs_path (str): Absolute path to CSV log file.
         """
+        REQUEST_ABS_PATH = os.path.join(LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_LOGS_REQUESTS_BASENAME)
+        print(REQUEST_ABS_PATH)
+        log_abs_path = REQUEST_ABS_PATH if log_abs_path is None else log_abs_path
+
         try:
             
             # Check if directory and file exists.
@@ -235,10 +243,10 @@ class Client :
             self,
             method : str,
             endpoint : str,
-            params : Dict = None,
-            data : Dict = None,
-            json : Dict = None,
-            headers : Dict = None,
+            params : Optional[Dict] = None,
+            data : Optional[Dict] = None,
+            json : Optional[Dict] = None,
+            headers : Optional[Dict] = None,
             timeout : int = 10
         
         ) -> Optional[Dict[str, Any]] :
@@ -322,14 +330,14 @@ class Client :
     # -------------------------------------------------- Logic functions --------------------------------------------------
 
 
-    def get_calc_results (
+    def get_calculation_results (
         
             self,
             calculation_id : str | int,
-            endpoint : Optional[str] = None,
             calculation_details : str = "Yes",
             results_home_ccy : str = "Yes",
-            results_portf_ccy : str = "No"
+            results_portf_ccy : str = "No",
+            endpoint : Optional[str] = None
 
         ) -> Optional[Dict] :
         """
@@ -342,7 +350,7 @@ class Client :
         Returns:
             dict | None: Calculation results if available.
         """
-        endpoint = ICE_URL_CALC_RES if endpoint is None else endpoint
+        endpoint = ICE_URL_GET_CALC_RES if endpoint is None else endpoint
 
         payload = {
 
@@ -410,10 +418,9 @@ class Client :
             bool: True if the token was saved successfully, False otherwise.
         """
         status = False
-
         if token is None :
 
-            print("[-] Error saving token to cache: No token found")
+            print("[!] No token found into cache")
             return status
 
         try :
@@ -427,7 +434,6 @@ class Client :
             }
             
             # Ensure parent directory exists
-            # Ensure parent directory exists
             cache_dir = os.path.dirname(self.token_cache_path)
             os.makedirs(cache_dir, exist_ok=True)
         
@@ -438,6 +444,6 @@ class Client :
 
         except Exception as e :
 
-            print("[-] Error saving token to cache:", e)
+            print("[-] Error saving token to cache: ", e)
 
         return status

@@ -384,6 +384,27 @@ class TradeManager (Client) :
             names.add(name)
 
         return list(names)
+    
+
+    def get_all_existing_hv_portfolios (self, endpoint : Optional[str] = None) -> Optional[List] :
+        """
+        
+        """
+        endpoint = ICE_URL_GET_PORTFOLIOS if endpoint is None else endpoint
+
+        list_names = self.get_all_existing_portfolios(endpoint)
+        
+        hv_portfolios = set()
+
+        for portfolio in list_names :
+            
+            name = portfolio.get("portfolioName")
+
+            if str(name).startswith("HV") :
+                hv_portfolios.add(name)
+
+        return list(hv_portfolios)
+        
 
 
     # -------------------------------------------- Booking operations --------------------------------------------  

@@ -5,7 +5,6 @@ import polars as pl
 
 from dotenv import load_dotenv, find_dotenv
 
-
 # If the .env sits next to this file:
 ENV_PATH = find_dotenv()
 
@@ -13,136 +12,37 @@ if ENV_PATH :
     load_dotenv(ENV_PATH)
 
 
+# ----------- API Credentials -----------
 ICE_HOST=os.getenv("ICE_HOST")
 ICE_AUTH=os.getenv("ICE_AUTH")
-
 
 ICE_USERNAME=os.getenv("ICE_USERNAME")
 ICE_PASSWORD=os.getenv("ICE_PASSWORD")
 
 
+# ----------- API Endpoints -----------
 ICE_URL_SEARCH_TRADES=os.getenv("ICE_URL_SEARCH_TRADES")
 ICE_URL_GET_TRADES=os.getenv("ICE_URL_GET_TRADES")
-ICE_URL_CALC_RES=os.getenv("ICE_URL_CALC_RES")
+ICE_URL_GET_CALC_RES=os.getenv("ICE_URL_GET_CALC_RES")
 ICE_URL_BIL_IM_CALC=os.getenv("ICE_URL_BIL_IM_CALC")
 ICE_URL_TRADES_ADD=os.getenv("ICE_URL_TRADES_ADD")
 ICE_URL_INVOKE_CALC=os.getenv("ICE_URL_INVOKE_CALC")
 ICE_URL_GET_PORTFOLIOS=os.getenv("ICE_URL_GET_PORTFOLIOS")
 
 ICE_URL_QUERY_RESULTS=os.getenv("ICE_URL_QUERY_RESULTS")
-ICE_DATA_VS_ID=os.getenv("ICE_DATA_VS_ID")
+ICE_URL_DATA_VS_ID=os.getenv("ICE_URL_DATA_VS_ID")
 ICE_URL_INVOKE_DQUERY=os.getenv("ICE_URL_INVOKE_DQUERY")
 ICE_DATA_QUERY_ID=os.getenv("ICE_DATA_QUERY_ID")
 
 
+# ----------- Pricers -----------
+#  FX endpoints  
 FX_PRICER_SOLVE_PATH=os.getenv("FX_PRICER_SOLVE_PATH")
 
+
+# EQ endpoints 
 EQ_PRICER_CALC_PATH=os.getenv("EQ_PRICER_CALC_PATH")
 EQ_PRICER_SOLVE_PATH=os.getenv("EQ_PRICER_SOLVE_PATH")
-
-
-API_LOG_REQUEST_FILE_PATH=os.getenv("API_LOG_REQUEST_FILE_PATH")
-API_LOG_REQUEST_FILE_CSV_PATH=os.getenv("API_LOG_REQUEST_FILE_CSV_PATH")
-
-LIBAPI_CACHE_DIR_ABS_PATH=os.getenv("LIBAPI_CACHE_DIR_ABS_PATH")
-LIBAPI_CACHE_FILE_BASENAME=os.getenv("LIBAPI_CACHE_FILE_BASENAME")
-
-CALCULATION_ID_FILE_ABS_PATH=os.getenv("CALCULATION_ID_FILE_ABS_PATH")
-CALCULATION_ID_CSV_ABS_PATH=os.getenv("CALCULATION_ID_CSV_ABS_PATH")
-
-PRICING_LOG_FILE_PATH=os.getenv("PRICING_LOG_FILE_PATH")
-
-SAVED_REQUESTS_DIRECTORY_PATH=os.getenv("SAVED_REQUESTS_DIRECTORY_PATH")
-
-
-BOOK_NAMES_HV_ALL=os.getenv("BOOK_NAMES_HV_ALL")
-BOOK_NAMES_WR_ALL=os.getenv("BOOK_NAMES_WR_ALL")
-
-BOOK_NAMES_HV_SUBSET_N1=os.getenv("BOOK_NAMES_HV_SUBSET_N1")
-BOOK_NAMES_HV_SUBSET_N2=os.getenv("BOOK_NAMES_HV_SUBSET_N2")
-
-
-# Optional parameters (to avoid to convert every time the list)
-
-BOOK_NAMES_HV_LIST_ALL=list(BOOK_NAMES_HV_ALL.split(","))
-BOOK_NAMES_WR_LIST_ALL=list(BOOK_NAMES_WR_ALL.split(","))
-
-BOOK_NAMES_HV_LIST_SUBSET_N1=list(BOOK_NAMES_HV_SUBSET_N1.split(","))
-BOOK_NAMES_HV_LIST_SUBSET_N2=list(BOOK_NAMES_HV_SUBSET_N2.split(","))
-
-
-# instruments concurrencies
-CCYS_ORDER=['EUR', 'USD', 'CHF', 'CAD', 'JPY', 'GBP', 'SEK', 'NOK']
-
-BANK_COUNTERPARTY_NAME=os.getenv("BANK_COUNTERPARTY_NAME")
-
-
-COUNTERPARTIES=[
-
-    {
-        "name" : os.getenv("NAME_COUNTER_GSI"),
-        "email" : os.getenv("EMAIL_COUNTER_GSI"),
-        "mailSubject" : os.getenv("MAIL_SUBJECT_1"),
-        "mailBody" : os.getenv("MAIL_BODY_1"),
-        "nameInIce" : os.getenv("NAME_ICE_GSI")
-    },
-
-    {
-        "name" : os.getenv("NAME_COUNTER_MS"),
-        "email" : os.getenv("EMAIL_COUNTER_MS"),
-        "mailSubject" : os.getenv("MAIL_SUBJECT_2"),
-        "mailBody" : os.getenv("MAIL_BODY_2"),
-        "nameInIce" : os.getenv("NAME_ICE_MS")
-    },
-
-]
-
-RISKS_UNDERLYING_ASSETS={
-
-    "FX" : {'FX': ['Delta', 'Gamma', "Vega", "MarketData"]},
-    "EQ" : {'EQ': ['Delta', 'Gamma', "Vega", "MarketData"]},
-    "Basket" : {'EQ': ['Delta', 'Gamma', "Vega", "MarketData"]}
-
-}
-
-
-INSTRUMENTS_OVERRIDE={
-
-    "ID" : pl.Int64,
-    "direction" : pl.Utf8, # Could be Sell / Buy
-    "pair" : pl.Utf8, # Could be  
-    "opt_type" : pl.Utf8,
-
-    "strike" : pl.Float64,
-
-    'notional' : pl.Float64,
-    'notional_currency' : pl.Utf8,
-    'expiry' : pl.Utf8,
-    'BBGTicker' : dict,
-    'stratid' : pl.Utf8,
-
-}
-
-
-FREQUENCY_DATE_MAP = {
-
-    "Day" : "1d",
-    "Week" : "1w",
-    "Month" : "1mo",
-    "Quarter" : "1q",
-    "Year" : "1y"
-
-}
-
-API_PRICER_LOG_SCHEMA = {
-
-    'date' : pl.Utf8,
-    'n_instruments' : pl.Int32
-
-}
-
-
-
 
 # Columns in the pricer
 COLUMNS_IN_PRICER={
@@ -241,3 +141,106 @@ COLUMNS_IN_PRICER={
     "BBGTicker":"first",
 
 }
+
+
+# ----------- LibAPI parameters / paths -----------
+LIBAPI_LOGS_DIR_ABS_PATH=os.getenv("LIBAPI_LOGS_DIR_ABS_PATH")
+LIBAPI_LOGS_REQUESTS_BASENAME=os.getenv("LIBAPI_LOGS_REQUESTS_BASENAME")
+LIBAPI_LOGS_PRICING_BASENAME=os.getenv("LIBAPI_LOGS_PRICING_BASENAME")
+LIBAPI_LOGS_CALCULATIONS_BASENAME=os.getenv("LIBAPI_LOGS_CALCULATIONS_BASENAME")
+
+LIBAPI_LOGS_PRICER_COLUMNS = {
+
+    'date' : pl.Utf8,
+    'n_instruments' : pl.Int32
+
+}
+
+LIBAPI_CACHE_DIR_ABS_PATH=os.getenv("LIBAPI_CACHE_DIR_ABS_PATH")
+LIBAPI_CACHE_RESULTS_DIR_PATH=os.getenv("LIBAPI_CACHE_RESULTS_DIR_PATH")
+LIBAPI_CACHE_TOKEN_BASENAME=os.getenv("LIBAPI_CACHE_TOKEN_BASENAME")
+
+
+# ----------- Portfolio Names / Groups -----------
+BOOK_NAMES_HV_ALL=os.getenv("BOOK_NAMES_HV_ALL")
+BOOK_NAMES_WR_ALL=os.getenv("BOOK_NAMES_WR_ALL")
+
+BOOK_NAMES_HV_SUBSET_N1=os.getenv("BOOK_NAMES_HV_SUBSET_N1")
+BOOK_NAMES_HV_SUBSET_N2=os.getenv("BOOK_NAMES_HV_SUBSET_N2")
+
+
+# Optional parameters (to avoid to convert every time the list)
+BOOK_NAMES_HV_LIST_ALL=list(BOOK_NAMES_HV_ALL.split(","))
+BOOK_NAMES_WR_LIST_ALL=list(BOOK_NAMES_WR_ALL.split(","))
+
+BOOK_NAMES_HV_LIST_SUBSET_N1=list(BOOK_NAMES_HV_SUBSET_N1.split(","))
+BOOK_NAMES_HV_LIST_SUBSET_N2=list(BOOK_NAMES_HV_SUBSET_N2.split(","))
+
+
+# ----------- Instruments concurrencies -----------
+CCYS_ORDER=['EUR', 'USD', 'CHF', 'CAD', 'JPY', 'GBP', 'SEK', 'NOK']
+
+INSTRUMENTS_OVERRIDE={
+
+    "ID" : pl.Int64,
+    "direction" : pl.Utf8, # Could be Sell / Buy
+    "pair" : pl.Utf8, # Could be  
+    "opt_type" : pl.Utf8,
+
+    "strike" : pl.Float64,
+
+    'notional' : pl.Float64,
+    'notional_currency' : pl.Utf8,
+    'expiry' : pl.Utf8,
+    'BBGTicker' : dict,
+    'stratid' : pl.Utf8,
+
+}
+
+# ----------- Counterparties -----------
+BANK_COUNTERPARTY_NAME=os.getenv("BANK_COUNTERPARTY_NAME")
+
+COUNTERPARTIES=[
+
+    {
+        "name" : os.getenv("NAME_COUNTER_GSI"),
+        "email" : os.getenv("EMAIL_COUNTER_GSI"),
+        "mailSubject" : os.getenv("MAIL_SUBJECT_1"),
+        "mailBody" : os.getenv("MAIL_BODY_1"),
+        "nameInIce" : os.getenv("NAME_ICE_GSI")
+    },
+
+    {
+        "name" : os.getenv("NAME_COUNTER_MS"),
+        "email" : os.getenv("EMAIL_COUNTER_MS"),
+        "mailSubject" : os.getenv("MAIL_SUBJECT_2"),
+        "mailBody" : os.getenv("MAIL_BODY_2"),
+        "nameInIce" : os.getenv("NAME_ICE_MS")
+    },
+
+]
+
+RISKS_UNDERLYING_ASSETS={
+
+    "FX" : {'FX': ['Delta', 'Gamma', "Vega", "MarketData"]},
+    "EQ" : {'EQ': ['Delta', 'Gamma', "Vega", "MarketData"]},
+    "Basket" : {'EQ': ['Delta', 'Gamma', "Vega", "MarketData"]}
+
+}
+
+
+
+
+FREQUENCY_DATE_MAP = {
+
+    "Day" : "1d",
+    "Week" : "1w",
+    "Month" : "1mo",
+    "Quarter" : "1q",
+    "Year" : "1y"
+
+}
+
+
+
+

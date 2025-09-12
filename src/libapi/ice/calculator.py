@@ -84,7 +84,7 @@ class IceCalculator (Client) :
     # -------------------------------------------------- IM Bilateral -------------------------------------------------- #
 
 
-    def run_im_bilateral_calculation (
+    def run_bilateral_im_calculation (
         
             self,
             date: Optional[str | dt.datetime] = None,
@@ -175,7 +175,7 @@ class IceCalculator (Client) :
             return None
             
         
-        calculation = self.get_calc_results(calculation_id)
+        calculation = self.get_calculation_results(calculation_id)
         calc_res = calculation.get('results') if calculation is not None else None
 
         if calc_res is None :
@@ -213,7 +213,7 @@ class IceCalculator (Client) :
         """
         verified = _as_date_str(date)
 
-        date_formatted = verified.split(" ")[0] + " 00:00:00" #date.replace(hour=0, minute=0, second=0, microsecond=0) if date is not None else dt.datetime.now()
+        date_formatted = verified.split(" ")[0] + " 00:00:00" # date.replace(hour=0, minute=0, second=0, microsecond=0) if date is not None else dt.datetime.now()
         calculation_id = read_id_from_file(date_formatted, calc_type, fund=fund)
 
         start = time.time()
@@ -227,7 +227,7 @@ class IceCalculator (Client) :
 
             write_to_file(calculation_id, date_formatted, calc_type, fund=fund)
 
-        calculation = self.get_calc_results(calculation_id)
+        calculation = self.get_calculation_results(calculation_id)
         calc_res = calculation.get('results') if calculation is not None else None
 
         if calc_res is None :
@@ -267,7 +267,7 @@ class IceCalculator (Client) :
 
             write_to_file(calculation_id, date_formatted, calculation_type=type)
         
-        calculation = self.get_calc_results(calculation_id)
+        calculation = self.get_calculation_results(calculation_id)
         calc_res = calculation.get('results') if calculation is not None else None
 
         if calc_res is None :
@@ -356,7 +356,7 @@ class IceCalculator (Client) :
             print("[-] Error: No valid calculation ID found...")
             return None
 
-        calc_results = self.get_calc_results(id_last)
+        calc_results = self.get_calculation_results(id_last)
         trade_legs = calc_results.get("tradeLegs") if calc_results is not None else None
 
         return trade_legs
@@ -378,7 +378,7 @@ class IceCalculator (Client) :
         current_time = dt.datetime.now()
         diff_time = current_time - last_run_time
 
-        calc_results = self.get_calc_results(id_last)
+        calc_results = self.get_calculation_results(id_last)
         trade_legs = calc_results.get("tradeLegs") if calc_results is not None else None
 
         return trade_legs
@@ -421,7 +421,7 @@ class IceCalculator (Client) :
             print("[-] Error: No valid calculation ID found")
             return None
 
-        calc_results = self.get_calc_results(id)
+        calc_results = self.get_calculation_results(id)
         trade_legs = calc_results.get("tradeLegs") if calc_results is not None else None
 
         return trade_legs
@@ -455,7 +455,7 @@ class IceCalculator (Client) :
 
             write_to_file(calculation_id, date_formatted, "IM", fund=fund) # CHECK THIS LINE TODO
 
-        calculation = self.get_calc_results(calculation_id)
+        calculation = self.get_calculation_results(calculation_id)
         
         return calculation
 
@@ -483,7 +483,7 @@ class IceCalculator (Client) :
 
             write_to_file(calculation_id, verified_date, type)
 
-        calculation = self.get_calc_results(calculation_id)
+        calculation = self.get_calculation_results(calculation_id)
 
         return calculation
     
@@ -500,7 +500,7 @@ class IceCalculator (Client) :
         Returns:
             dict: Result dictionary.
         """
-        return super().get_calc_results(calculation_id)
+        return super().get_calculation_results(calculation_id)
     
 
     

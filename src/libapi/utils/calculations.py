@@ -5,7 +5,9 @@ import polars as pl
 
 from typing import Optional, Tuple
 
-from libapi.config.parameters import CALCULATION_ID_FILE_ABS_PATH, CALCULATION_ID_CSV_ABS_PATH
+from libapi.config.parameters import (
+    LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_LOGS_CALCULATIONS_BASENAME
+)
 from libapi.utils.formatter import date_to_str
 
 def write_to_file (
@@ -25,7 +27,8 @@ def write_to_file (
         return
 
     fund = "HV" if fund is None else fund
-    file_abs_path = CALCULATION_ID_CSV_ABS_PATH if file_abs_path is None else file_abs_path
+    CALCULATIONS_ABS_PATH = os.path.join(LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_LOGS_CALCULATIONS_BASENAME)
+    file_abs_path = CALCULATIONS_ABS_PATH if file_abs_path is None else file_abs_path
 
     # Convert date to string if it's a datetime object
     if isinstance(date, dt.datetime):
@@ -76,11 +79,13 @@ def write_to_file (
 
     print(f"New row added: {new_row}")
 
-
-def write_file_to_csv (file_abs_path : str = CALCULATION_ID_FILE_ABS_PATH, csv_abs_path : str = CALCULATION_ID_CSV_ABS_PATH) :
+"""
+def write_file_to_csv (file_abs_path : str = None, csv_abs_path : str = CALCULATION_ID_CSV_ABS_PATH) :
+    CALCULATIONS_ABS_PATH = os.path.join(LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_LOGS_CALCULATIONS_BASENAME)
+    file_abs_path = CALCULATIONS_ABS_PATH if file_abs_path is None else file_abs_path
 
     # Check if the output CSV exists
-    if not os.path.exists(CALCULATION_ID_CSV_ABS_PATH):
+    if not os.path.exists(file_abs_path):
         # Create the CSV file with headers
         print("[*] Creating new CSV file with headers...")
         empty_df = pl.DataFrame([
@@ -137,7 +142,7 @@ def write_file_to_csv (file_abs_path : str = CALCULATION_ID_FILE_ABS_PATH, csv_a
     # Append to the existing CSV file
     df.write_csv(CALCULATION_ID_CSV_ABS_PATH)
     print(f"[*] Successfully appended {len(df)} rows to CSV.")
-
+"""
 
 def check_duplicate (
 
@@ -152,7 +157,8 @@ def check_duplicate (
     
     """
     fund = "HV" if fund is None else fund
-    file_abs_path = CALCULATION_ID_FILE_ABS_PATH if file_abs_path is None else file_abs_path
+    CALCULATIONS_ABS_PATH = os.path.join(LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_LOGS_CALCULATIONS_BASENAME)
+    file_abs_path = CALCULATIONS_ABS_PATH if file_abs_path is None else file_abs_path
 
     # Open the file in read mode
     with open(file_abs_path, 'r') as file :
@@ -203,7 +209,8 @@ def read_id_from_file (
     Returns the ID of calculationtype and fund
     """
     fund = "HV" if fund is None else fund
-    file_abs_path = CALCULATION_ID_CSV_ABS_PATH if file_abs_path is None else file_abs_path
+    CALCULATIONS_ABS_PATH = os.path.join(LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_LOGS_CALCULATIONS_BASENAME)
+    file_abs_path = CALCULATIONS_ABS_PATH if file_abs_path is None else file_abs_path
     verified_date_dt = date_to_str(date, format)
     
     schema_override = {
@@ -255,7 +262,7 @@ def get_last_run_time (
         
         calculation_type : str,
         fund : str = "HV",
-        file_abs_path : str = CALCULATION_ID_FILE_ABS_PATH,
+        file_abs_path : Optional[str] = None,
         format : str = "%Y-%m-%d %H:%M:%S"
         
     ) :
@@ -264,6 +271,9 @@ def get_last_run_time (
     """
     last_run_time = None
     last_run_id = None
+
+    CALCULATIONS_ABS_PATH = os.path.join(LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_LOGS_CALCULATIONS_BASENAME)
+    file_abs_path = CALCULATIONS_ABS_PATH if file_abs_path is None else file_abs_path
 
     # Open the file in read mode
     with open(file_abs_path, 'r') as file :
@@ -290,17 +300,20 @@ def get_last_run_time (
     return last_run_time, last_run_id
 
 
-def get_closest_date_of_run_mv (target_date, filename=CALCULATION_ID_FILE_ABS_PATH, format : str = "%Y-%m-%d %H:%M:%S") :
+def get_closest_date_of_run_mv (target_date, file_abs_path : str = None, format : str = "%Y-%m-%d %H:%M:%S") :
     """
     
     """
+    CALCULATIONS_ABS_PATH = os.path.join(LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_LOGS_CALCULATIONS_BASENAME)
+    file_abs_path = CALCULATIONS_ABS_PATH if file_abs_path is None else file_abs_path
+
     target_datetime = date_to_str(target_date, format)
 
     closest_date = None
     closest_id = None
     min_time_diff = None
 
-    with open(filename, 'r') as file :
+    with open(file_abs_path, 'r') as file :
         
         for line in file:
             
