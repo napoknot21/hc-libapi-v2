@@ -2,59 +2,17 @@ import polars as pl
 import datetime as dt
 from typing import Optional, Dict, List
 
-from libapi.ice.client import Client
 from libapi.config.parameters import (
-    ICE_HOST, ICE_AUTH, ICE_USERNAME, ICE_PASSWORD, BANK_COUNTERPARTY_NAME,
-    ICE_URL_SEARCH_TRADES, ICE_URL_GET_TRADES, ICE_URL_TRADES_ADD, ICE_URL_GET_PORTFOLIOS,
-    BOOK_NAMES_HV_LIST_SUBSET_N1, BOOK_NAMES_HV_LIST_ALL
+    ICE_HOST, ICE_AUTH, ICE_USERNAME, ICE_PASSWORD, # ICE credentials
+    ICE_URL_SEARCH_TRADES, ICE_URL_GET_TRADES, ICE_URL_TRADES_ADD, ICE_URL_GET_PORTFOLIOS, # Endpoints
+    BANK_COUNTERPARTY_NAME, BOOK_NAMES_HV_LIST_SUBSET_N1, BOOK_NAMES_HV_LIST_ALL # Names (banks, books, etc)
 )
+from libapi.ice.client import Client
+from libapi.utils.formatter import date_to_str
 
-
-def _as_date_str (date : str | dt.datetime = None) -> str :
-    """
-    Convert a date or datetime object to a string in "YYYY-MM-DD" format.
-
-    Args:
-        date (str | datetime): The input date.
-
-    Returns:
-        str: Date string in "YYYY-MM-DD" format.
-    """
-    if date is None:
-        date = dt.datetime.now()
-    
-    return date.strftime("%Y-%m-%d") if isinstance(date, dt.datetime) else str(date)
-
-
-def _as_time_str (time : str | dt.time = None) -> str :
-    """
-    Convert a date or datetime object to a string in "YYYY-MM-DD" format.
-
-    Args:
-        date (str | datetime): The input date.
-
-    Returns:
-        str: Date string in "YYYY-MM-DD" format.
-    """
-    if time is None :
-        time = dt.datetime.now().time()
-
-    return time.strftime("%H:%M:%S") if isinstance(time, dt.time) else str(time)
-
-
-def _validate_date (date_str: str) -> Optional[dt.datetime] :
-    """
-    Validate `YYYY-MM-DD` and return a datetime or None.
-    """
-    try :
-
-        return dt.datetime.strptime(date_str, "%Y-%m-%d")
-    
-    except Exception :
-        
-        return None
 
 class TradeManager (Client) :
+
 
     def __init__ (
         
@@ -112,6 +70,15 @@ class TradeManager (Client) :
         ) -> Optional[Dict] :
         """
         Returns all trades from selected books / Portfolios
+
+        Args:
+            books (List[str] | str) : Name of books / portfolios
+            type (str) : Type of query, it refers to find any value that could match (cf. API doc)
+            field (str) : type of field
+            endpoint (str | None) : Endpoint for asking the informations
+
+        Returns:
+            response (Dict | None) : Big dictionnary with a trade list, status and requeestID 
         """
         if books is None :
             raise ValueError("[-] None name or void name for the book.")
@@ -156,7 +123,7 @@ class TradeManager (Client) :
         """
         
         """
-        date = _as_date_str(date)
+        date = date_to_str(date)
         endpoint = ICE_URL_SEARCH_TRADES if endpoint is None else endpoint
         books = [books] if isinstance(books, str) else (None if not isinstance(books, list) else books)
 
@@ -196,22 +163,6 @@ class TradeManager (Client) :
 
         )
 
-        
-        if response is None :
-            return None
-        
-        """
-        trade_legs = response.get("tradeLegs")
-        trade_ids = [trade['tradeLegId'] for trade in trade_legs]
-
-        trade_infos = self.get_info_trades_from_ids(trade_ids)
-
-        if trade_infos is None :
-            return None
-
-        infos_trades = trade_infos["tradeLegs"] if trade_infos and "tradeLegs" in trade_infos else None
-        """
-
         return response
 
 
@@ -227,10 +178,10 @@ class TradeManager (Client) :
         Get information about specific trades.
 
         Parameters:
-        - trade_ids (list): List of trade IDs.
+            trade_ids (list) : List of trade IDs.
 
         Returns:
-        - dict: Information about the specified trades.
+            dict : Information about the specified trades.
         """
         endpoint = ICE_URL_GET_TRADES if endpoint is None else endpoint
 
@@ -293,10 +244,10 @@ class TradeManager (Client) :
     def get_tickers_from_hv_equity_book (
             
             self,
-            book : str = BOOK_NAMES_HV_LIST_SUBSET_N1[0],
+            book : Optional[str] = None,
             type : str = "in",
             field : str = "Book",
-            endpoint : str = ICE_URL_SEARCH_TRADES,
+            endpoint : Optional[str] = None,
         
         ) -> Optional[List] :
         """
@@ -309,8 +260,11 @@ class TradeManager (Client) :
             endpoint (str): API endpoint for searching trades. Defaults to ICE_URL_SEARCH_TRADES.
 
         Returns:
-            Optional[List[str]]: A list of unique SD tickers if found, or an empty list if none are available.
+            sdtickers (List[str] | None) : A list of unique SD tickers if found, or an empty list if none are available.
         """
+        endpoint = ICE_URL_SEARCH_TRADES if endpoint is None else endpoint
+        book = BOOK_NAMES_HV_LIST_SUBSET_N1[0] if book is None else book
+
         # Format of the response
         # response = List[Dict[str, Any]] where each Dict[str, Any] is a TradeLeg information
         response = self.get_trades_from_books(book, type, field,  endpoint)
@@ -349,9 +303,15 @@ class TradeManager (Client) :
         return list(sdtickers)
     
 
-    def get_all_existing_portfolios (self, endpoint : Optional[str] = None) -> Optional[List[Dict]] :
+    def get_all_existing_portfolios_raw (self, endpoint : Optional[str] = None) -> Optional[List[Dict]] :
         """
-        
+        Retrieve all existing portfolios in raw dictionary format.
+
+        Args:
+            endpoint (Optional[str], default=None): API endpoint to query. If None, uses the default ICE_URL_GET_PORTFOLIOS constant.
+
+        Returns:
+            Optional[List[Dict]]: A list of portfolio objects as dictionaries, each containing fields such as "portfolioName", "portfolioId", etc. 
         """
         endpoint = ICE_URL_GET_PORTFOLIOS if endpoint is None else endpoint
 
@@ -371,43 +331,77 @@ class TradeManager (Client) :
 
     def get_all_existing_portfolio_names (self, endpoint : Optional[str] = None) -> Optional[List] :
         """
+        Retrieve the names of all existing portfolios.
+
+        Args:
+            endpoint (Optional[str], default=None): API endpoint to query. If None, uses the default ICE_URL_GET_PORTFOLIOS constant.
+
+        Returns:
+            Optional[List[str]]: A list of portfolio names as strings.
+        """
+        return self.get_all_specific_portfolios_names(start_with=None, endpoint=endpoint)
+    
+
+    def get_all_existing_hv_portfolios (self, endpoint : Optional[str] = None) -> Optional[List] :
+        """
+        Retrieve all existing portfolios whose names start with 'HV'.
+
+        Args:
+            endpoint (Optional[str], default=None): API endpoint to query. If None, uses the default ICE_URL_GET_PORTFOLIOS constant.
+
+        Returns:
+            Optional[List[str]] : A list of portfolio names starting with 'HV'.
+        """        
+        return self.get_all_specific_portfolios_names("HV", endpoint=endpoint)
         
+
+    def get_all_existing_wr_portfolios (self, endpoint : Optional[str] = None) -> Optional[List] :
+        """
+        Retrieve all existing portfolios whose names start with 'WR'.
+
+        Args:
+            endpoint (Optional[str], default=None): API endpoint to query. If None, uses the default ICE_URL_GET_PORTFOLIOS constant.
+
+        Returns:
+            Optional[List[str]] : A list of portfolio names starting with 'WR'.
+        """
+        return self.get_all_specific_portfolios_names("WR", endpoint=endpoint)
+        
+
+    def get_all_specific_portfolios_names (self, prefix : Optional[str] = "HV", endpoint : Optional[str] = None) :
+        """
+        Retrieve all existing portfolios whose names start with a given prefix.
+
+        Args:
+            prefix (Optional[str], default="HV"): String prefix to filter portfolio names. If None or empty string, returns all portfolio names.
+            endpoint (Optional[str], default=None): API endpoint to query. If None, uses the default ICE_URL_GET_PORTFOLIOS constant.
+
+        Returns:
+            Optional[List[str]]: A list of portfolio names matching the prefix filter.
         """
         endpoint = ICE_URL_GET_PORTFOLIOS if endpoint is None else endpoint
 
-        response = self.get_all_existing_portfolios(endpoint)
+        response = self.get_all_existing_portfolios_raw(endpoint)
 
         names = set()
         for portfolio in response :
 
             name = portfolio.get("portfolioName")
-            names.add(name)
+
+            if prefix is None or prefix == "" :
+                names.add(name)
+            
+            else :
+                
+                formated_prefix = str(prefix).upper().split()
+
+                if str(name).startswith(formated_prefix) :
+                    names.add(name)
 
         return list(names)
-    
-
-    def get_all_existing_hv_portfolios (self, endpoint : Optional[str] = None) -> Optional[List] :
-        """
-        
-        """
-        endpoint = ICE_URL_GET_PORTFOLIOS if endpoint is None else endpoint
-
-        list_names = self.get_all_existing_portfolios(endpoint)
-        
-        hv_portfolios = set()
-
-        for portfolio in list_names :
-            
-            name = portfolio.get("portfolioName")
-
-            if str(name).startswith("HV") :
-                hv_portfolios.add(name)
-
-        return list(hv_portfolios)
-        
 
 
-    # -------------------------------------------- Booking operations --------------------------------------------  
+    # -------------------------------------------- Booking operations --------------------------------------------  TODO
 
 
     def post_cash_leg (self, currency : str, date : str | dt.datetime, notional : float, counterparty : str, pay_rec : str = "Pay", endpoint : str = ICE_URL_TRADES_ADD) :
