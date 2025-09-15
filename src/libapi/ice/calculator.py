@@ -12,23 +12,7 @@ from libapi.config.parameters import (
     ICE_URL_BIL_IM_CALC, ICE_URL_INVOKE_CALC
 )
 from libapi.utils.calculations import *
-
-
-def _as_date_str (date : Optional[str | dt.datetime | dt.date] = None, format : str = "%Y-%m-%d") -> str :
-    """
-    Convert a date or datetime object to a string in "YYYY-MM-DD" format.
-
-    Args:
-        date (str | datetime): The input date.
-
-    Returns:
-        str: Date string in "YYYY-MM-DD" format.
-    """
-    if date is None :
-        date = dt.datetime.now()
-
-    return date.strftime(format) if isinstance(date, dt.datetime) else str(date)
-
+from libapi.utils.formatter import date_to_str
 
 class IceCalculator (Client) :
     """
@@ -104,7 +88,7 @@ class IceCalculator (Client) :
         Returns:
             dict: API response (usually includes "calculationId").
         """
-        verified_date = _as_date_str(date)
+        verified_date = date_to_str(date)
         fund = "HV" if fund is None else fund
         endpoint = ICE_URL_BIL_IM_CALC if endpoint is None else endpoint
 
@@ -155,7 +139,7 @@ class IceCalculator (Client) :
         Returns:
             list[dict] | None: List of result dictionaries for each counterparty.
         """
-        date = _as_date_str(date)
+        date = date_to_str(date)
         ctpy_name = "MorganStanley" if ctpy_name is None else ctpy_name
         type = "IM" if type is None else type
 
@@ -168,10 +152,10 @@ class IceCalculator (Client) :
 
             print('[i] No calculation id found. Running calculation in ICE for date ', date)
 
-            #calculation_dict = self.run_im_bilateral(date)
-            #calculation_id = calculation_dict.get("calculationId")
+            calculation_dict = self.run_bilateral_im_calculation(date)
+            calculation_id = calculation_dict.get("calculationId")
 
-            #write_to_file(calculation_id, date, type)
+            write_to_file(calculation_id, date, type)
             return None
             
         
@@ -192,7 +176,7 @@ class IceCalculator (Client) :
         return im
     
 
-    def get_bilateral_im_ctpy (
+    def get_bilateral_im_calculation_by_ctpy (
         
             self,
             date : str | dt.datetime | None = None,
@@ -211,10 +195,8 @@ class IceCalculator (Client) :
         Returns:
             list[dict] | None: List of result dictionaries for each counterparty.
         """
-        verified = _as_date_str(date)
-
-        date_formatted = verified.split(" ")[0] + " 00:00:00" # date.replace(hour=0, minute=0, second=0, microsecond=0) if date is not None else dt.datetime.now()
-        calculation_id = read_id_from_file(date_formatted, calc_type, fund=fund)
+        date = date_to_str(date)
+        calculation_id = read_id_from_file(date, calc_type, fund=fund)
 
         start = time.time()
 
@@ -222,10 +204,10 @@ class IceCalculator (Client) :
 
             print(f"[*] Run calculation in ICE for date {date} \n")
             
-            calculation_dict = self.run_im_bilateral(date_formatted, fund=fund)
+            calculation_dict = self.run_bilateral_im_calculation(date, fund=fund)
             calculation_id = calculation_dict.get("calculationId")
 
-            write_to_file(calculation_id, date_formatted, calc_type, fund=fund)
+            write_to_file(calculation_id, date, calc_type, fund=fund)
 
         calculation = self.get_calculation_results(calculation_id)
         calc_res = calculation.get('results') if calculation is not None else None
@@ -251,21 +233,19 @@ class IceCalculator (Client) :
         Returns:
             list[dict] | None: Result of the bilateral IM calculation.
         """
-        verified = _as_date_str(date)
-
-        date_formatted = verified.split(" ")[0] + " 00:00:00" #date.replace(hour=0, minute=0, second=0, microsecond=0) if date is not None else dt.datetime.now()
-        calculation_id = read_id_from_file(date_formatted , type)
+        date = date_to_str(date)
+        calculation_id = read_id_from_file(date , type)
 
         start = time.time()
 
         if not calculation_id :
 
-            print(f"[*] Running ICE calculation for date {date_formatted }")
+            print(f"[*] Running ICE calculation for date {date }")
             
-            calculation_dict = self.run_im_bilateral(date_formatted , ctptys=False)
+            calculation_dict = self.run_bilateral_im_calculation(date , ctptys=False)
             calculation_id = calculation_dict.get("calculationId")
 
-            write_to_file(calculation_id, date_formatted, calculation_type=type)
+            write_to_file(calculation_id, date, type=type)
         
         calculation = self.get_calculation_results(calculation_id)
         calc_res = calculation.get('results') if calculation is not None else None
@@ -283,22 +263,25 @@ class IceCalculator (Client) :
     # -------------------------------------------------- MV and Greeks -------------------------------------------------- #
 
 
-    def run_mv_n_greeks (self, date : str | dt.datetime | None = None, endpoint : str = ICE_URL_INVOKE_CALC) -> Optional[dict] :
+    def run_mv_n_greeks (self, date : Optional[str | dt.datetime] = None, book_names : Optional[List[str]] = None, endpoint : Optional[str] = None) -> Optional[dict] :
         """
         Trigger MV and Greeks calculation.
 
         Args:
-            date (str | datetime, optional): If provided, run for EOD date.
+            date (str | datetime): If provided, run for EOD date.
 
         Returns:
             dict: Response from the API.
         """
-        valuation = { "type" : "RealTime" } if date is None else { "type" : "EOD", "date" : _as_date_str(date) }
+        endpoint = ICE_URL_INVOKE_CALC if endpoint is None else endpoint
+        book_names = BOOK_NAMES_HV_LIST_ALL if book_names is None else book_names
+
+        valuation = { "type" : "RealTime" } if date is None else { "type" : "EOD", "date" : date_to_str(date) } # In this case, date type (Null or Not) matters
 
         payload = {
 
             "valuation" : valuation,
-            "bookNames" : BOOK_NAMES_HV_LIST_ALL,
+            "bookNames" : book_names,
             "includeSubBooks" : "true"
 
         }
@@ -325,7 +308,7 @@ class IceCalculator (Client) :
             dict: Trade legs with MV and Greeks.
         """
 
-        last_run_time, id_last = get_last_run_time(type)
+        last_run_time, id_last = get_most_recent_calculation(type)
 
         current_time = dt.datetime.now()
         diff_time = current_time - last_run_time
@@ -373,7 +356,7 @@ class IceCalculator (Client) :
         Returns:
             list[dict] | None: Trade legs.
         """
-        last_run_time, id_last = get_last_run_time(type)
+        last_run_time, id_last = get_most_recent_calculation(type)
 
         current_time = dt.datetime.now()
         diff_time = current_time - last_run_time
@@ -395,16 +378,17 @@ class IceCalculator (Client) :
             dict: Trade legs from the calculation.
         """
 
-        verfied_date = _as_date_str(date)
-        date_calc, calc_id = get_closest_date_of_run_mv(verfied_date)
+        date = date_to_str(date)
+        date_calc, calc_id = get_closest_date_calculation_by_type(date, type="MV")
 
         # No previous calculation
         if date_calc is None or calc_id is None :
+
             print("[-] No previous calculation found or unable to find closest date")
             return None
         
         id = None
-        if date_calc[:10] != verfied_date :
+        if date_calc != date :
 
             # Run the calculation for the given date
             print("[+] Running new MV and Greeks calculation...")
@@ -439,7 +423,7 @@ class IceCalculator (Client) :
         Returns:
             dict: Raw calculation result from ICE.
         """
-        verified = _as_date_str(date)
+        verified = date_to_str(date)
 
         date_formatted = verified.split(" ")[0] + " 00:00:00" #date.replace(hour=0, minute=0, second=0, microsecond=0)
         calculation_id = read_id_from_file(date_formatted, type, fund=fund)
@@ -471,7 +455,7 @@ class IceCalculator (Client) :
         Returns:
             dict: Full MV calculation result.
         """
-        verified_date = _as_date_str(date)
+        verified_date = date_to_str(date)
         calculation_id = read_id_from_file(verified_date, type, timeSensitive=False)
 
         if not calculation_id : 

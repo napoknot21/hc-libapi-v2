@@ -210,7 +210,6 @@ class Client :
             log_abs_path (str): Absolute path to CSV log file.
         """
         REQUEST_ABS_PATH = os.path.join(LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_LOGS_REQUESTS_BASENAME)
-        print(REQUEST_ABS_PATH)
         log_abs_path = REQUEST_ABS_PATH if log_abs_path is None else log_abs_path
 
         try:
@@ -432,9 +431,9 @@ class Client :
                 "expiration": expiration
             
             }
-            
+
             # Ensure parent directory exists
-            cache_dir = os.path.dirname(self.token_cache_path)
+            cache_dir = os.path.dirname(LIBAPI_CACHE_DIR_ABS_PATH)
             os.makedirs(cache_dir, exist_ok=True)
         
             with open(self.token_cache_path, "w", encoding="utf-8") as f :

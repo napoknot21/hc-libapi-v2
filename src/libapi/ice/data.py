@@ -3,22 +3,7 @@ from typing import Optional, Dict
 
 from libapi.ice.client import Client
 from libapi.config.parameters import *
-
-
-def _as_date_str (date : str | dt.datetime = None, format : str = "%Y-%m-%d") -> str :
-    """
-    Convert a date or datetime object to a string in "YYYY-MM-DD" format.
-
-    Args:
-        date (str | datetime): The input date.
-
-    Returns:
-        str: Date string in "YYYY-MM-DD" format.
-    """
-    if date is None:
-        date = dt.datetime.now()
-    
-    return date.strftime(format) if isinstance(date, dt.datetime) else str(date)
+from libapi.utils.formatter import date_to_str
 
 
 def _as_time_str (time : str | dt.time = None, format : str = "%H:%M:%S") -> str :
@@ -75,16 +60,18 @@ class IceData (Client) :
         return super().authenticate(username, password)
 
 
-    def volatility_surface (self, endpoint : str = ICE_URL_QUERY_RESULTS) -> Optional[Dict]: 
+    def volatility_surface (self, endpoint : Optional[str] = None) -> Optional[Dict]: 
         """
         
         """
+        endpont = ICE_URL_QUERY_RESULTS if endpont is None else endpont
+
         response = self.post(
 
             endpoint=endpoint,
             data={
 
-                "dataQueryId" : ICE_DATA_VS_ID
+                "dataQueryId" : ICE_URL_DATA_VS_ID
 
             }
 
@@ -101,13 +88,15 @@ class IceData (Client) :
             valuation_type : str = "Cut",
             time_zone : str =  "LND",
             ex_eod : bool = True,
-            endpoint : str = ICE_URL_INVOKE_DQUERY
+            endpoint : Optional[str] = None
         
         ) -> Optional[Dict]:
         """
         
         """
-        date = _as_date_str(date)
+        endpoint = ICE_URL_INVOKE_DQUERY if endpoint is None else endpoint
+
+        date = date_to_str(date)
         time = _as_time_str(time)
 
         valuation = {
@@ -133,10 +122,9 @@ class IceData (Client) :
 
             endpoint=endpoint,
             data={
+
                 "dataQueries" : [
-
                     data_query
-
                 ],
             }
 

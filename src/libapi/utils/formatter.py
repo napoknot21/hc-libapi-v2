@@ -3,7 +3,7 @@ import datetime as dt
 from typing import Optional
 
 
-def date_to_str (date : str | dt.datetime = None, format : str = "%Y-%m-%d") -> str :
+def date_to_str (date : Optional[str | dt.datetime] = None, format : str = "%Y-%m-%d") -> str :
     """
     Convert a date or datetime object to a string in "YYYY-MM-DD" format.
 
@@ -14,10 +14,13 @@ def date_to_str (date : str | dt.datetime = None, format : str = "%Y-%m-%d") -> 
         str: Date string in "YYYY-MM-DD" format.
     """
     if date is None:
-        date = dt.datetime.now()
-    
-    elif isinstance(date, dt.datetime) :
-        date = date
+        date_obj = dt.datetime.now()
+
+    elif isinstance(date, dt.datetime):
+        date_obj = date
+
+    elif isinstance(date, dt.date):  # handles plain date (without time)
+        date_obj = dt.datetime.combine(date, dt.time.min) # This will add 00 for the time
 
     elif isinstance(date, str) :
 

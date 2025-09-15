@@ -89,11 +89,9 @@ class TradeManager (Client) :
         payload = {
 
             "query" : {
-            
                 "type" : type,
                 "field" : field,
                 "values" : books  
-            
             }
             
         }
@@ -393,7 +391,7 @@ class TradeManager (Client) :
             
             else :
                 
-                formated_prefix = str(prefix).upper().split()
+                formated_prefix = str(prefix).upper().strip()
 
                 if str(name).startswith(formated_prefix) :
                     names.add(name)
@@ -414,7 +412,9 @@ class TradeManager (Client) :
 
             endpoint=endpoint,
             data={
+                
                 "trades" : [payload]
+            
             }
 
         )
@@ -448,7 +448,9 @@ class TradeManager (Client) :
 
             endpoint=endpoint,
             json={
+
                 "trades" : [payload_bn, payload_cp]
+
             }
 
         )
@@ -550,7 +552,7 @@ class TradeManager (Client) :
         Returns:
             dict | None: A dictionary representing the trade payload, or None if generation fails.
         """
-        verfied_date = _as_date_str(date)
+        verfied_date = date_to_str(date)
         book =  BOOK_NAMES_HV_LIST_ALL[1] if book is None else book
 
         settlement = {

@@ -161,6 +161,15 @@ LIBAPI_CACHE_RESULTS_DIR_PATH=os.getenv("LIBAPI_CACHE_RESULTS_DIR_PATH")
 LIBAPI_CACHE_TOKEN_BASENAME=os.getenv("LIBAPI_CACHE_TOKEN_BASENAME")
 
 
+LIBAPI_LOGS_REQUESTS_COLUMNS = {
+
+    "Date" : pl.Datetime,
+    "ID" : pl.Int128,
+    "Type" : pl.Utf8,
+    "Fundation" : pl.Utf8
+
+}
+
 # ----------- Portfolio Names / Groups -----------
 BOOK_NAMES_HV_ALL=os.getenv("BOOK_NAMES_HV_ALL")
 BOOK_NAMES_WR_ALL=os.getenv("BOOK_NAMES_WR_ALL")
