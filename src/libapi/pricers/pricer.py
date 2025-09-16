@@ -2,24 +2,25 @@ from __future__ import annotations
 
 import os
 import time
+import csv
 import polars as pl
 import datetime as dt
-#import pandas as pd
 
 from typing import Dict, List, Optional, Any
 
 from libapi.utils.formatter import *
 from libapi.ice.trade_manager import TradeManager
 from libapi.config.parameters import (
-    PRICING_LOG_FILE_PATH, FREQUENCY_DATE_MAP, EQ_PRICER_CALC_PATH, RISKS_UNDERLYING_ASSETS,
-    COLUMNS_IN_PRICER, API_PRICER_LOG_SCHEMA
+    LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_LOGS_PRICING_BASENAME, LIBAPI_LOGS_PRICER_COLUMNS,
+    FREQUENCY_DATE_MAP, EQ_PRICER_CALC_PATH, RISKS_UNDERLYING_ASSETS,
+    COLUMNS_IN_PRICER, 
 
 )
 
 class Pricer :
 
 
-    def __init__ (self, trade_manager : TradeManager | None = None) -> None :
+    def __init__ (self, trade_manager : Optional[TradeManager] = None) -> None :
         """
         
         """
@@ -76,17 +77,15 @@ class Pricer :
             self,
             instruments : List[Dict],
             asset_class : str,
-            asset_dict : Dict = RISKS_UNDERLYING_ASSETS,
-            time : str | dt.time | None = None,
-            date : str | dt.datetime | None = None,
+            asset_dict : Optional[Dict] = None,
+            time : Optional[str | dt.time] = None,
+            date : Optional[str | dt.datetime | dt.date] = None,
             valuation_type : str = "EOD",
-            default_risks : List = ['Spread', 'Theta'],
-            endpoint : str = EQ_PRICER_CALC_PATH,
+            default_risks : List[str] = ["Spread", "Theta"],
             instr_type : str = "Vanilla",
-
-            underly_asset : str | Dict = None,
-
-            payout_ccy : str = "EUR"
+            underly_asset : Optional[str | Dict] = None,
+            payout_ccy : str = "EUR",
+            endpoint : Optional[str] = None,
 
         ) -> Optional[Dict] :
         """
@@ -95,6 +94,9 @@ class Pricer :
         Args:
 
         """
+        endpoint = EQ_PRICER_CALC_PATH if endpoint is None else endpoint
+        asset_dict = RISKS_UNDERLYING_ASSETS if asset_dict is None else asset_dict
+        
         verfied_date = date_to_str(date) if date is not None else None
         verfied_time = time_to_str(time) if time is not None else None
 
@@ -139,7 +141,7 @@ class Pricer :
 
                 }
                 
-            else : # Here we are in "Basket case" (Green Day's reference)
+            else : # Here we are in "Basket case" (Yes, Green Day's reference)
 
                 instrument_payload["PayoutCurrency"] = payout_ccy
                 underlying_asset = instrument["underlyingAssets"]
@@ -185,45 +187,48 @@ class Pricer :
     def log_api_call (
         
             self,
-            n_instruments : int,
-            date : str | dt.datetime = None,
-            schema_override : Dict = API_PRICER_LOG_SCHEMA,
-            log_abs_path : str = PRICING_LOG_FILE_PATH
+            n_instruments : str | int,
+            date : Optional[str | dt.datetime] = None,
+            format : str = "%Y-%m-%d %H:%M:%S",
+            log_abs_path : Optional[str] = None
         
         ) -> None :
         """
         Log an API call with the current timestamp and number of instruments.
         """
-        formatted_date =  date_to_str(date)
+        LIBAPI_LOGS_PRICING_ABS_PATH = os.path.join(LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_LOGS_PRICING_BASENAME)
+        log_abs_path = LIBAPI_LOGS_PRICING_ABS_PATH if log_abs_path is None else log_abs_path
+        
+        date =  date_to_str(date)
+
+        obj_date = dt.datetime.strptime(date, format[:8])
+        obj_time = dt.datetime.now().time()
+
+        obj_datetime = dt.datetime.combine(obj_date, obj_time)
 
         start = time.time()
         
         # Create new row as Polars DataFrame
-        new_row = pl.DataFrame(
-            {
-                "date": [formatted_date],
-                "n_instruments": [n_instruments]
-            }
-        )
-
-        if os.path.exists(log_abs_path) :
+        new_row = {
             
-            # File exists
+            "Date": dt.datetime.strftime(obj_datetime, format),
+            "n_instruments": int(n_instruments)
+        
+        }
+
+        # Check if file exists
+        file_exists = os.path.isfile(log_abs_path)
+
+        with open(log_abs_path, mode="a", newline="", encoding="utf-8") as f :
+        
+            writer = csv.DictWriter(f, fieldnames=new_row.keys())
             
+            if not file_exists :
+                writer.writeheader()
 
-            logs = pl.read_csv(log_abs_path, schema_overrides=schema_override)
-            logs = pl.concat([logs, new_row], how="vertical")
+            writer.writerow(new_row)
 
-        else :
-
-            # File does not exists
-            logs = new_row
-
-        print("[+] Log file successfully updated for API call")
-
-        logs.write_csv(log_abs_path)
-
-        print(f"[-] Information written in the CSV log file into {time.time() - start} seconds")
+        print(f"[+] Information written in the CSV log file into {time.time() - start} seconds")
 
 
     def flatten_pricer_response (
@@ -258,291 +263,77 @@ class Pricer :
         # ---------- Flatten top-level results ----------
 
         base = base.select(keep_cols + [c for c in base.columns if c in ("results", "assets")])
+        
+        # We'll build a list of flattened rows as dicts
+        flattened_rows = []
 
-        def treat_row(row) :
-            """
+        for row in base.iter_rows(named=True) :
+
+            # Start from basic keys (like id)
+            flat_row = {k: row[k] for k in keep_cols if k in row}
+
+            # Flatten 'results' list
+            results = row.get('results')
             
-            """
-            if 'results' in row and isinstance(row['results'], list) :
+            if isinstance(results, list) :
 
-                for result_dict in row['results'] :
+                for result_dict in results :
 
+                    code = result_dict.get('code')
+                    value = result_dict.get('value')
+                    
+                    if code is not None and value is not None :
+                        flat_row[code] = value
+
+                    if 'currency' in result_dict and code is not None :
+                        flat_row[f"{code}_currency"] = result_dict['currency']
+
+            # Flatten 'assets' list (only first asset)
+            assets = row.get('assets')
+            
+            if isinstance(assets, list) and len(assets) > 0 and isinstance(assets[0], dict):
+            
+                first_asset = assets[0]
+                flat_row['asset'] = first_asset.get('name')
+                asset_results = first_asset.get('results', [])
+            
+                for result_dict in asset_results :
+            
                     code = result_dict.get('code')
                     value = result_dict.get('value')
 
                     if code is not None and value is not None :
-                        row[code] = value
+                        flat_row[code] = value
+                    
+                    if 'currency' in result_dict and code is not None :
+                        flat_row[f"{code}_currency"] = result_dict['currency']
 
-                    if "currency" in result_dict :
-                        row[code + "_currency"] = result_dict['currency']
+            flattened_rows.append(flat_row)
 
-            if "assets" in row and isinstance(row['results'], list) :
+        # Create Polars DataFrame from flattened dicts
+        data = pl.DataFrame(flattened_rows)
 
-                if not type(row['assets'])==float and len(row['assets'][0]) > 0 :
-
-                    row['asset'] = row['assets'][0]['name']
-
-                    for result_dict in row['assets'][0]['results'] :
-
-                        code = result_dict.get('code')
-                        value = result_dict.get('value')
-
-                        if code is not None and value is not None :
-                            row[code] = value
-
-                        if "currency" in result_dict :
-                            row[code + "_currency"] = result_dict['currency']
-
-            return row
-
-        data = data.apply(lambda row: treat_row(row), axis=1)
-        data.drop(columns=[col for col in ['results', 'assets'] if col in data.columns], inplace=True)
-
-        instruments_df = pd.DataFrame(instruments)
-        
-        data = pd.merge(
-            data, 
-            instruments_df[[col for col in ['ID', 'direction', 'pair', 'opt_type', 'strike', 'notional', 'notional_currency', 'expiry', 'BBGTicker', 'stratid'] if col in instruments_df.columns]], 
-            left_on='id',
-            right_on='ID',
-            how='left'
-        )
-        
-        return data
-    
-
-    def treat_json_response_pricer_polars(
-        
-            self,
-            response: Dict[str, Any],
-            instruments: List[Dict[str, Any]]
-        
-        ) -> pl.DataFrame :
-        """
-        
-        """
-        # Base frame from JSON
-        base = pl.DataFrame(response["instruments"])
-
-        # Keep only what we need early (reduces memory).
-        keep = [c for c in ("id", "results", "assets") if c in base.columns]
-        base = base.select(keep)
-        lbase = base.lazy()
-
-
-        # --- Top-level results -> long
-        # results: list[struct{code, value, currency}]
-        if "results" in base.columns :
-
-            results_long = (
-
-                lbase
-                .select(["id", "results"])
-                .explode("results")
-                .drop_nulls("results")
-
-                .select(
-
-                    pl.col("id"),
-                    pl.col("results").struct.field("code").alias("code"),
-                    pl.col("results").struct.field("value").alias("value"),
-                    pl.col("results").struct.field("currency").alias("currency"),
-                    pl.lit(0).alias("src_order")  # 0 = top-level
-
-                )
-            )
-        
-        else :
-
-            results_long = pl.DataFrame(
-                
-                {
-                    "id" : [],
-                    "code" : [],
-                    "value" : [],
-                    "currency" : [],
-                    "src_order" : []
-                }
-
-            ).lazy()
-
-        # --- First asset name & results -> long
-        if "assets" in base.columns :
-
-            assets_pre = (
-
-                lbase
-                .select(["id", "assets"])
-                .with_columns(
-
-                    first_asset = pl.when(
-
-                        pl.col(
-                            "assets".is_not_null() & (pl.col('assets').list.lengths() > 0)
-                        )
-
-                    ).then(pl.col("assets").list.get(9)).otherwise(None)
-
-                )
-
-            )
-
-            asset_name = (
-                
-                assets_pre
-                .select("id", pl.col("first_asset").struct.field("name").alias("asset"))
-                .unique()
-
-            )
-
-            asset_results_long = (
-
-                assets_pre
-                .select("id", pl.col("first_asset").struct.field("results").alias("asset_res"))
-                .explode("asset_res")
-                .drop_nulls("asset_res")
-
-                .select(
-
-                    pl.col("id"),
-                    pl.col("asset_res").struct.field("code").alias("code"),
-                    pl.col("asset_res").struct.field("value").alias("value"),
-                    pl.col("asset_res").struct.field("currency").alias("currency"),
-                    pl.lit(1).alias("src_order")  # 1 = asset-level (preferred)
-
-                )
-
-            )
-
-        else :
-
-            asset_name = pl.DataFrame(
-
-                {
-                    "id": [],
-                    "asset": []
-                }
-
-            ).lazy()
-
-            asset_results_long = pl.DataFrame(
-            
-                {
-                    "id": [],
-                    "code": [],
-                    "value": [],
-                    "currency": [],
-                    "src_order": []
-                }
-            
-            ).lazy()
-
-        # Combine
-        combined = pl.concat([results_long, asset_results_long], how="vertical_relaxed")
-
-        
-
-
-
-
-
-        # First asset -> asset results long + asset name
-        assets_pre = (
-            base
-            .select(["id", "assets"])
-            .with_columns(
-                first_asset = pl.when(
-                    pl.col("assets").is_not_null() & (pl.col("assets").list.lengths() > 0)
-                ).then(pl.col("assets").list.get(0)).otherwise(None)
-            )
-            .with_columns(
-                asset_name = pl.col("first_asset").struct.field("name"),
-                asset_res  = pl.col("first_asset").struct.field("results")
-            )
-        )
-
-        asset_name = assets_pre.select(["id", "asset_name"]).unique()
-
-        asset_results_long = (
-            assets_pre
-            .select(["id", "asset_res"])
-            .with_columns(pl.col("asset_res").list.explode().alias("result"))
-            .drop_nulls("result")
-            .with_columns(
-                code     = pl.col("result").struct.field("code"),
-                value    = pl.col("result").struct.field("value"),
-                currency = pl.col("result").struct.field("currency"),
-                src_order= pl.lit(1)  # 1 = asset-level (preferred)
-            )
-            .select(["id", "code", "value", "currency", "src_order"])
-        )
-
-        # Combine and prefer asset-level values on collisions via aggregation='last'
-        combined_long = pl.concat([results_long, asset_results_long], how="vertical_relaxed") \
-                        .sort(["id", "code", "src_order"])
-
-        values_wide = combined_long.pivot(
-            index="id", columns="code", values="value", aggregate_function="last"
-        )
-
-        currency_wide = combined_long.pivot(
-            index="id", columns="code", values="currency", aggregate_function="last"
-        )
-        # Suffix currency columns
-        currency_wide = currency_wide.rename({c: f"{c}_currency" for c in currency_wide.columns if c != "id"})
-
-        # Stitch everything together
-        out = (
-            base.select("id").unique()
-            .join(asset_name.rename({"asset_name": "asset"}), on="id", how="left")
-            .join(values_wide, on="id", how="left")
-            .join(currency_wide, on="id", how="left")
-        )
-
-        # Join with instruments
-        if instruments:
-            instr = pl.DataFrame(instruments)
-            sel = [c for c in ['ID','direction','pair','opt_type','strike','notional',
-                            'notional_currency','expiry','BBGTicker','stratid']
-                if c in instr.columns]
-            if sel:
-                out = out.join(instr.select(sel), left_on="id", right_on="ID", how="left")
-
-        return out
-
-
-    def flatten_json_response (self, response : Dict, instruments : List[Dict]) :
-        """
-        
-        """
+        # Prepare instruments DataFrame
         instruments_df = pl.DataFrame(instruments)
-        instruments_data = pl.DataFrame(response.get("instruments", []))
 
-        if instruments_df is None or instruments_data is None :
+        # Columns to join on (only keep existing)
+        join_cols = [col for col in ['ID', 'direction', 'pair', 'opt_type', 'strike',
+                                    'notional', 'notional_currency', 'expiry',
+                                    'BBGTicker', 'stratid'] if col in instruments_df.columns]
 
-            return pl.DataFrame([])
+        # Join data on id = ID
+        # Polars requires join keys with same names or specify them explicitly:
+        if 'id' in data.columns and 'ID' in instruments_df.columns :
         
-        # Early detection of missing "results"
-        if all("results" not in instrument for instrument in instruments_data) :
-
-            return pl.DataFrame(instruments_data)
+            instruments_df_renamed = instruments_df.rename({'ID': 'id'})
+            merged = data.join(instruments_df_renamed.select(['id'] + join_cols[1:]), on='id', how='left')
         
+        else :
+            
+            print("[!] Cannot join on id/ID: columns missing.")
+            return data
 
-        # Process each instrument
-        flattened_rows = []
-        for instrument in instruments_data :
-
-            flat_row = {k :v for k, v in instrument.items() if k not in ["results", "assets"]}
-
-            # Handle top_level results
-            for result in instrument.get("results", []) :
-
-                return None
-
-        return None
-
-    # OPTIMISED FUNCTOIN ?
-    def flatten_response_json (self, response, instruments, columns_overrides : Dict = COLUMNS_IN_PRICER) :
+        return merged
         """
         
         
@@ -647,10 +438,11 @@ class Pricer :
     def generate_dates (
             
             self,
-            start_date : str | dt.datetime = dt.datetime.now(),
-            end_date : str | dt.datetime = dt.datetime.now(),
+            start_date : Optional[str | dt.datetime] = None,
+            end_date : Optional[str | dt.datetime] = None,
             frequency : str = "Day",
-            frequency_map : Dict = FREQUENCY_DATE_MAP
+            frequency_map : Optional[Dict] = None,
+            format : str = "%Y-%m-%d"
         
         ) -> Optional[List]:
         """
@@ -664,6 +456,13 @@ class Pricer :
         Returns:
             list: list of dates in format 'YYYY-MM-DD' or None
         """
+        start_date = date_to_str(start_date)
+        end_date = date_to_str(end_date)
+
+        start_date = dt.datetime.strptime(start_date, format)
+        end_date = dt.datetime.strptime(end_date, format)
+
+        frequency_map = FREQUENCY_DATE_MAP if frequency_map is None else frequency_map
         interval = frequency_map.get(frequency)
 
         if interval is None :
@@ -673,7 +472,6 @@ class Pricer :
 
         # This return a Series
         try :
-
             series_dates = pl.date_range(start_date, end_date, interval=interval, eager=True)
 
         except Exception as e :
@@ -688,6 +486,7 @@ class Pricer :
         
         # Filter out weekends for non-business day frequencies
         series_dates_wd = series_dates.filter(series_dates.dt.weekday() <= 4)
+        print(series_dates_wd)
         
         if series_dates_wd.len() == 0 :
 
@@ -695,7 +494,11 @@ class Pricer :
             return []
 
         # Convert the date range to a list of strings in the format 'YYYY-MM-DD'
-        range_date_list = series_dates_wd.strftime('%Y-%m-%d').tolist()
+        range_date_list = (series_dates_wd
+            .to_frame("dates")
+            .with_columns(pl.col("dates").dt.strftime(format).alias("formatted_dates"))["formatted_dates"]
+            .to_list()
+        )
 
         print("[+] Successfully range date generated and converted to list")
 

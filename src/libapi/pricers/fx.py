@@ -9,26 +9,17 @@ from libapi.utils.formatter import *
 from libapi.pricers.pricer import Pricer
 from libapi.config.parameters import COLUMNS_IN_PRICER, FX_PRICER_SOLVE_PATH
 
-from libapi.instruments.instruments import (
-
-    get_instruments_samestrike_sell_put_call_fx,
-    get_instruments_2_strikes_sell_put_call_fx,
-    get_instruments_sell_cs_fx,
-    get_instruments_sell_ps_fx,
-    get_instruments_put_fx,
-    get_instruments_call_fx
-
-)
+from libapi.instruments.fx import *
 
 
 strategies_instruments_creation = {
 
-    'Straddle' : get_instruments_samestrike_sell_put_call_fx,
-    'Strangle' : get_instruments_2_strikes_sell_put_call_fx,
-    'Call Spread' : get_instruments_sell_cs_fx,
-    'Put Spread' : get_instruments_sell_ps_fx,
-    'Put' : get_instruments_put_fx,
-    'Call' : get_instruments_call_fx,
+    'Straddle' : make_fx_straddle_payloads,
+    'Strangle' : make_fx_strangle_payloads,
+    'Call Spread' : make_fx_call_spread_payloads,
+    'Put Spread' : make_fx_put_spread_payloads,
+    'Put' : make_fx_put_leg_payloads,
+    'Call' : make_fx_call_leg_payloads,
 
 }
 

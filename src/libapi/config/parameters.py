@@ -151,8 +151,8 @@ LIBAPI_LOGS_CALCULATIONS_BASENAME=os.getenv("LIBAPI_LOGS_CALCULATIONS_BASENAME")
 
 LIBAPI_LOGS_PRICER_COLUMNS = {
 
-    'date' : pl.Utf8,
-    'n_instruments' : pl.Int32
+    'date' : pl.Datetime,
+    'n_instruments' : pl.Int64
 
 }
 
@@ -251,5 +251,5 @@ FREQUENCY_DATE_MAP = {
 }
 
 
-
-
+# Test
+SAVED_REQUESTS_DIRECTORY_PATH=""

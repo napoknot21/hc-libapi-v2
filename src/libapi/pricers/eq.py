@@ -8,27 +8,17 @@ from typing import Optional, List, Dict
 from datetime import datetime
 
 from libapi.pricers.pricer import Pricer
-from libapi.config.parameters import COLUMNS_IN_PRICER, SAVED_REQUESTS_DIRECTORY_PATH, EQ_PRICER_CALC_PATH, EQ_PRICER_SOLVE_PATH, RISKS_UNDERLYING_ASSETS
-
-from libapi.instruments.instruments import (
-
-    get_instruments_samestrike_sell_put_call_eq, 
-    get_instruments_2_strikes_sell_put_call_eq, 
-    get_instruments_sell_cs_eq, 
-    get_instruments_sell_ps_eq, 
-    get_instruments_put_eq, 
-    get_instruments_call_eq,
-    
-)
+from libapi.config.parameters import COLUMNS_IN_PRICER, EQ_PRICER_CALC_PATH, EQ_PRICER_SOLVE_PATH, RISKS_UNDERLYING_ASSETS
+from libapi.instruments.eq import *
 
 strategies_instruments_creation = {
 
-    'Straddle' : get_instruments_samestrike_sell_put_call_eq,
-    'Strangle' : get_instruments_2_strikes_sell_put_call_eq,
-    'Call Spread' : get_instruments_sell_cs_eq,
-    'Put Spread' : get_instruments_sell_ps_eq,
-    'Put' : get_instruments_put_eq,
-    'Call' : get_instruments_call_eq,
+    'Straddle' : make_eq_straddle_payloads,
+    'Strangle' : make_eq_strangle_payloads,
+    'Call Spread' : make_eq_call_spread_payloads,
+    'Put Spread' : make_eq_put_spread_payloads,
+    'Put' : make_eq_put_leg_payloads,
+    'Call' : make_eq_call_leg_payloads,
 
 }
 
@@ -312,7 +302,7 @@ class PricerEQ (Pricer) :
         """
         filename = f"equity_curve_{direction}_{BBGTicker}_{opt_type}_{strike}_{notional}_expi-{expiry}_from-{start_date}_to-{end_date}_each-{frequency}.xlsx"
         
-        return filename in os.listdir(SAVED_REQUESTS_DIRECTORY_PATH), filename
+        return filename in os.listdir(EQ_PRICER_CALC_PATH), filename # SAVED_REQUESTS_DIRECTORY_PATH
 
 
     def equity_curve (self, direction : str, BBGTicker : str, opt_type : str, strike : str, notional : float, expiry : str, start_date : str, end_date : str, frequency='Day') :
@@ -345,7 +335,7 @@ class PricerEQ (Pricer) :
         exists, filename = self.does_equity_curve_exist(direction, BBGTicker, opt_type, strike, notional, expiry, start_date, end_date, frequency)
         
         if exists:
-            return pd.read_excel(SAVED_REQUESTS_DIRECTORY_PATH + "/" + filename)
+            return pd.read_excel(EQ_PRICER_CALC_PATH + "/" + filename) # SAVED_REQUESTS_DIRECTORY_PATH
 
         # First thing to do is to get the strike of our option
         strike = self.get_strike(BBG_ticker=BBGTicker, opt_type=opt_type, strike=strike, expiry=expiry, valuation_date=start_date)
@@ -365,7 +355,7 @@ class PricerEQ (Pricer) :
             all_prices = pd.concat([all_prices, prices])         
     
         # Save as file in the database
-        all_prices.to_excel(SAVED_REQUESTS_DIRECTORY_PATH + "/" + filename, index=False)
+        all_prices.to_excel(EQ_PRICER_CALC_PATH + "/" + filename, index=False) # SAVED_REQUESTS_DIRECTORY_PATH
         
         # return the equity curve
         return all_prices

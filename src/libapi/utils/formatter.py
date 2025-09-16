@@ -41,7 +41,7 @@ def date_to_str (date : Optional[str | dt.datetime] = None, format : str = "%Y-%
     return date_obj.strftime(format)
 
 
-def time_to_str (time : str | dt.time = None, format : str = "%H:%M:%S") -> str :
+def time_to_str (time : Optional[str | dt.time] = None, format : str = "%H:%M:%S") -> str :
     """
     Convert a date or datetime object to a string in "YYYY-MM-DD" format.
 
@@ -49,7 +49,7 @@ def time_to_str (time : str | dt.time = None, format : str = "%H:%M:%S") -> str 
         date (str | datetime): The input date.
 
     Returns:
-        str: Date string in "YYYY-MM-DD" format.
+        str: Date string in "HH:MM" format.
     """
     if time is None :
         time = dt.datetime.now().time()
