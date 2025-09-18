@@ -33,7 +33,7 @@ class Client :
             is_auth : bool = False,
             verify_ssl : bool = False,
             timeout : int = 30,
-            token_cache_path : Optional[str | Path] = "None"
+            token_cache_path : Optional[str] = None
 
         ) -> None :
         """
@@ -68,7 +68,7 @@ class Client :
         self.session = requests.Session()
 
         TOKEN_CACHE_ABS_PATH = os.path.join(LIBAPI_CACHE_DIR_ABS_PATH, LIBAPI_CACHE_TOKEN_BASENAME)
-        self.token_cache_path = TOKEN_CACHE_ABS_PATH if token_cache_path is None else str(token_cache_path)
+        self.token_cache_path = TOKEN_CACHE_ABS_PATH if token_cache_path is None else token_cache_path
 
 
     def authenticate (self, username : str, password : str, endpoint : Optional[str] = None) -> bool :
