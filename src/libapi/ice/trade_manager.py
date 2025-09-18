@@ -110,7 +110,7 @@ class TradeManager (Client) :
             
             self,
             books : List[str] | str,
-            date : Optional[str | dt.datetime] = None,
+            dates : Optional[List[str | dt.datetime]] = None,
             query_type : str = "And",
             type : str = "In",
             field_trade : str = "TradeDate",
@@ -121,7 +121,7 @@ class TradeManager (Client) :
         """
         
         """
-        date = date_to_str(date)
+        dates = [date_to_str(date) for date in dates] if isinstance(dates, list) else [date_to_str(dates)]
         endpoint = ICE_URL_SEARCH_TRADES if endpoint is None else endpoint
         books = [books] if isinstance(books, str) else (None if not isinstance(books, list) else books)
 
@@ -129,7 +129,7 @@ class TradeManager (Client) :
 
             "type" : type,
             "field" : field_trade,
-            "values" : date
+            "values" : dates
 
         }
 
@@ -143,15 +143,18 @@ class TradeManager (Client) :
 
         payload = {
 
-            "type" : query_type,
-            "queries" : [
+            "query" : {
 
-                trade_date_query,
-                book_names_query
+                "type" : query_type,
+                "queries" : [
 
-            ]
+                    trade_date_query,
+                    book_names_query
 
+                ]
 
+            }
+            
         }
 
         response = self.post(
@@ -337,7 +340,7 @@ class TradeManager (Client) :
         Returns:
             Optional[List[str]]: A list of portfolio names as strings.
         """
-        return self.get_all_specific_portfolios_names(start_with=None, endpoint=endpoint)
+        return self.get_all_specific_portfolios_names(prefix=None, endpoint=endpoint)
     
 
     def get_all_existing_hv_portfolios (self, endpoint : Optional[str] = None) -> Optional[List] :

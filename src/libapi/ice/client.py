@@ -2,16 +2,19 @@ import os
 import csv
 import json
 import requests
+import polars as pl
 import datetime as dt
 
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from libapi.config.parameters import (
     LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_CACHE_DIR_ABS_PATH,
     LIBAPI_CACHE_TOKEN_BASENAME, LIBAPI_LOGS_REQUESTS_BASENAME,
-    ICE_URL_GET_CALC_RES
+    ICE_URL_GET_CALC_RES, FREQUENCY_DATE_MAP
 )
+from libapi.utils.formatter import date_to_str
+
 from urllib.parse import urljoin
 from urllib3.exceptions import InsecureRequestWarning
 from urllib3.util.retry import Retry
@@ -65,7 +68,7 @@ class Client :
         self.session = requests.Session()
 
         TOKEN_CACHE_ABS_PATH = os.path.join(LIBAPI_CACHE_DIR_ABS_PATH, LIBAPI_CACHE_TOKEN_BASENAME)
-        self.token_cache_path = TOKEN_CACHE_ABS_PATH if token_cache_path is None else token_cache_path
+        self.token_cache_path = TOKEN_CACHE_ABS_PATH if token_cache_path is None else str(token_cache_path)
 
 
     def authenticate (self, username : str, password : str, endpoint : Optional[str] = None) -> bool :
@@ -372,6 +375,75 @@ class Client :
 
     # -------------------------------------------------- Auxiliar functions --------------------------------------------------
 
+
+    def generate_dates (
+            
+            self,
+            start_date : Optional[str | dt.datetime] = None,
+            end_date : Optional[str | dt.datetime] = None,
+            frequency : str = "Day",
+            frequency_map : Optional[Dict] = None,
+            format : str = "%Y-%m-%d"
+        
+        ) -> Optional[List]:
+        """
+        Function that returns a list of dates based on the start date, end date and frequency
+
+        Args:
+            start_date (str): start date in format 'YYYY-MM-DD'
+            end_date (str): end date in format 'YYYY-MM-DD'
+            frequency (str): 'Day', 'Week', 'Month', 'Quarter', 'Year' represents the frequency of the equity curve
+            
+        Returns:
+            list: list of dates in format 'YYYY-MM-DD' or None
+        """
+        start_date = date_to_str(start_date)
+        end_date = date_to_str(end_date)
+
+        start_date = dt.datetime.strptime(start_date, format)
+        end_date = dt.datetime.strptime(end_date, format)
+
+        frequency_map = FREQUENCY_DATE_MAP if frequency_map is None else frequency_map
+        interval = frequency_map.get(frequency)
+
+        if interval is None :
+
+            print(f"[-] Invalid frequency: {frequency}. Choose from 'Day', 'Week', 'Month', 'Quarter', 'Year'.")
+            return None
+
+        # This return a Series
+        try :
+            series_dates = pl.date_range(start_date, end_date, interval=interval, eager=True)
+
+        except Exception as e :
+            
+            print(f"[-] Error generating dates: {e}")
+            return None
+
+        if series_dates.len() == 0 :
+
+            print("[-] Error during generation: empty range (check start & end).")
+            return None
+        
+        # Filter out weekends for non-business day frequencies
+        series_dates_wd = series_dates.filter(series_dates.dt.weekday() <= 5)
+        
+        if series_dates_wd.len() == 0 :
+
+            print("[*] No week day in the generated list after filter. Returning an empty List")
+            return []
+
+        # Convert the date range to a list of strings in the format 'YYYY-MM-DD'
+        range_date_list = (series_dates_wd
+            .to_frame("dates")
+            .with_columns(pl.col("dates").dt.strftime(format).alias("formatted_dates"))["formatted_dates"]
+            .to_list()
+        )
+
+        print("[+] Successfully range date generated and converted to list")
+
+        return range_date_list
+
     
     def _load_cached_token (self) -> Optional[str] :
         """
@@ -379,7 +451,9 @@ class Client :
         """
         try :
 
-            if os.path.exists(self.token_cache_path) :
+            cache_path = os.path.abspath(self.token_cache_path)
+
+            if os.path.exists(cache_path) :
                 
                 with open(self.token_cache_path, "r", encoding="utf-8") as f :
 
@@ -433,8 +507,7 @@ class Client :
             }
 
             # Ensure parent directory exists
-            cache_dir = os.path.dirname(LIBAPI_CACHE_DIR_ABS_PATH)
-            os.makedirs(cache_dir, exist_ok=True)
+            os.makedirs(os.path.dirname(self.token_cache_path), exist_ok=True)
         
             with open(self.token_cache_path, "w", encoding="utf-8") as f :
                 json.dump(data, f)

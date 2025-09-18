@@ -485,8 +485,7 @@ class Pricer :
             return None
         
         # Filter out weekends for non-business day frequencies
-        series_dates_wd = series_dates.filter(series_dates.dt.weekday() <= 4)
-        print(series_dates_wd)
+        series_dates_wd = series_dates.filter(series_dates.dt.weekday() <= 5)
         
         if series_dates_wd.len() == 0 :
 
