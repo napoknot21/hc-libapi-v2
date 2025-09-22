@@ -34,8 +34,9 @@ class PricerFX (Pricer) :
             
             self,
             instruments : List[Dict],
-            time : str | dt.time,
-            date : str | dt.datetime,
+            time : Optional[str | dt.time] = None,
+            date : Optional[str | dt.datetime] = None,
+            underly_asset : str = "EURUSD",
             endpoint : str = FX_PRICER_SOLVE_PATH
 
         ) -> Optional[Dict] :
@@ -56,9 +57,12 @@ class PricerFX (Pricer) :
                 {'direction': 'Sell', 'BBGTicker': 'SX5E', 'opt_type': 'Call', 'strike': '100%', 'notional': 1000000, 'expiry': '2024-04-30', 'SettlementDate':'2024-05-02'}
             ]
         """
-        response = self.request_prices_api(instruments, time, date, "FX", endpoint=endpoint)
+        date = date_to_str(date)
+        time = time_to_str(time)
 
-        return self.treat_json_response_pricer(response, instruments)
+        response = self.request_prices_api(instruments, "FX", time=time, date=date, underly_asset=underly_asset, endpoint=endpoint)
+
+        return response#self.treat_json_response_pricer(response, instruments)
 
 
     def get_opts_prices (self, instruments : List, time :  str | dt.time, date : str | dt.datetime) :

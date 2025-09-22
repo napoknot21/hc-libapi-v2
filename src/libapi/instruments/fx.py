@@ -14,7 +14,7 @@ def find_ccy (ccy : str, ccys_order : Optional[List] = None) :
     """
     
     """
-    ccys_oder = CCYS_ORDER if ccys_order is None else ccys_order
+    ccys_order = CCYS_ORDER if ccys_order is None else ccys_order
     
     for i in range(len(CCYS_ORDER)):
     
@@ -27,11 +27,11 @@ def find_ccy (ccy : str, ccys_order : Optional[List] = None) :
 def make_fx_option_leg_payload (
         
         direction : str,
-        ccy : str,
+        ccy_pair : str,
         opt_type : str,
-        strike : float,
+        strike : float | str,
         expiry : str | dt.datetime,
-        strait_id : str | int,
+        strait_id : Optional[str | int] = None,
         notional : float = 1_000_000
     
     ) -> Dict :
@@ -41,13 +41,13 @@ def make_fx_option_leg_payload (
     instrument = {
 
         'direction' : direction,
-        'pair' : ccy,
+        'pair' : ccy_pair,
         'opt_type' : opt_type,
         'strike' : strike,
         'notional' : notional,
-        'notional_currency' : find_ccy(ccy),
+        'notional_currency' : find_ccy(ccy_pair),
         'expiry' : date_to_str(expiry),
-        "stratid" : str(strait_id)
+        "stratid" : str(strait_id) if strait_id else None
 
     }
 

@@ -110,13 +110,13 @@ class Pricer :
 
             instrument_payload = self.generate_payload_api(
 
-                instrument["ID"],
-                instrument["direction"],
-                instrument['opt_type'],
-                instrument["strike"],
-                instrument['notional'],
-                instrument['expiry'],
-                instrument['SettlementDate'],
+                instrument.get("ID", None),
+                instrument.get("direction", None),
+                instrument.get('opt_type', None),
+                instrument.get("strike", None),
+                instrument.get('notional', None),
+                instrument.get('expiry', None),
+                instrument.get('SettlementDate', None),
                 instr_type=instr_type
 
             )
