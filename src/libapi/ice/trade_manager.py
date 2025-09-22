@@ -89,9 +89,11 @@ class TradeManager (Client) :
         payload = {
 
             "query" : {
+
                 "type" : type,
                 "field" : field,
                 "values" : books  
+
             }
             
         }
@@ -405,10 +407,21 @@ class TradeManager (Client) :
     # -------------------------------------------- Booking operations --------------------------------------------  TODO
 
 
-    def post_cash_leg (self, currency : str, date : str | dt.datetime, notional : float, counterparty : str, pay_rec : str = "Pay", endpoint : str = ICE_URL_TRADES_ADD) :
+    def post_cash_leg (
+            
+            self,
+            currency : str,
+            date : str | dt.datetime,
+            notional : float,
+            counterparty : str,
+            pay_rec : str = "Pay",
+            endpoint : Optional[str] = None
+        
+        ) :
         """
         
         """
+        endpoint = ICE_URL_TRADES_ADD if endpoint is None else endpoint
         payload = self.generate_cash_trade_payload(currency, date, counterparty, notional, pay_recv=pay_rec)
 
         response = self.post(

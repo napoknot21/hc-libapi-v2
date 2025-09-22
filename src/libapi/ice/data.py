@@ -3,23 +3,7 @@ from typing import Optional, Dict
 
 from libapi.ice.client import Client
 from libapi.config.parameters import *
-from libapi.utils.formatter import date_to_str
-
-
-def _as_time_str (time : str | dt.time = None, format : str = "%H:%M:%S") -> str :
-    """
-    Convert a date or datetime object to a string in "YYYY-MM-DD" format.
-
-    Args:
-        date (str | datetime): The input date.
-
-    Returns:
-        str: Date string in "YYYY-MM-DD" format.
-    """
-    if time is None :
-        time = dt.datetime.now().time()
-
-    return time.strftime(format) if isinstance(time, dt.time) else str(time)
+from libapi.utils.formatter import date_to_str, time_to_str
 
 
 class IceData (Client) :
@@ -27,10 +11,10 @@ class IceData (Client) :
     def __init__ (
         
             self,
-            ice_host : str = ICE_HOST,
-            ice_auth : str = ICE_AUTH,
-            ice_username : str = ICE_USERNAME,
-            ice_password : str = ICE_PASSWORD,
+            ice_host : Optional[str] = None,
+            ice_auth : Optional[str] = None,
+            ice_username : Optiona[str] = None,
+            ice_password : Optional[str] = None,
             
         ) -> None :
         """
@@ -39,11 +23,23 @@ class IceData (Client) :
         This sets up the base API host and authentication headers and performs
         login using the provided credentials.
         """
+        ice_host = ICE_HOST if ice_host is None else ice_host
+        ice_auth = ICE_AUTH if ice_auth is None else ice_auth
+
+        ice_username = ICE_USERNAME if ice_username is None else ice_username
+        ice_password = ICE_PASSWORD if ice_password is None else ice_password
+
         super().__init__(ice_host, ice_auth)
         self.authenticate(ice_username, ice_password)
 
 
-    def authenticate (self, username : str | None = None, password : str | None = None) -> bool :
+    def authenticate (
+        
+            self,
+            username : Optional[str] = None,
+            password : Optional[str] = None
+            
+        ) -> bool :
         """
         Proxy for the base Client.authenticate method.
 
@@ -60,7 +56,12 @@ class IceData (Client) :
         return super().authenticate(username, password)
 
 
-    def volatility_surface (self, endpoint : Optional[str] = None) -> Optional[Dict]: 
+    def volatility_surface (
+            
+            self,
+            endpoint : Optional[str] = None
+        
+        ) -> Optional[Dict] :
         """
         
         """
@@ -83,8 +84,8 @@ class IceData (Client) :
     def data_query (
         
             self,
-            date : str | dt.datetime = None,
-            time : str | dt.time = None,
+            date : Optional[str | dt.datetime] = None,
+            time : Optional[str | dt.time] = None,
             valuation_type : str = "Cut",
             time_zone : str =  "LND",
             ex_eod : bool = True,
@@ -97,7 +98,7 @@ class IceData (Client) :
         endpoint = ICE_URL_INVOKE_DQUERY if endpoint is None else endpoint
 
         date = date_to_str(date)
-        time = _as_time_str(time)
+        time = time_to_str(time)
 
         valuation = {
 
