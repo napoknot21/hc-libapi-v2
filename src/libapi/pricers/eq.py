@@ -1,6 +1,8 @@
-import os, sys
+from __future__ import annotations
+
+import os
 import polars as pl
-import pandas as pd
+import pandas as pd # type: ignore 
 import datetime as dt
 
 from typing import Optional, List, Dict

@@ -440,8 +440,6 @@ class Client :
             .to_list()
         )
 
-        print("[+] Successfully range date generated and converted to list")
-
         return range_date_list
 
     

@@ -195,7 +195,7 @@ class TradeManager (Client) :
 
         }
 
-        response : Dict = self.get(
+        response : Dict = self.post(
 
             endpoint=endpoint,
             json=payload

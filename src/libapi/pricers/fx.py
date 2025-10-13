@@ -1,5 +1,7 @@
-import tqdm
-import pandas as pd
+from __future__ import annotations
+
+import tqdm # type: ignore
+import pandas as pd # type: ignore
 import polars as pl
 import datetime as dt
 

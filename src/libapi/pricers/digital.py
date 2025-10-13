@@ -3,8 +3,8 @@ import datetime as dt
 
 from libapi.pricers.pricer import Pricer
 from libapi.config.parameters import *
-from libapi.instruments.instruments import *
-
+from libapi.instruments.eq import *
+from libapi.instruments.fx import *
 
 class PricerDigital (Pricer) :
 
