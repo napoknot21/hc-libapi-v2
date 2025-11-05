@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import polars as pl
 import datetime as dt
+
 from typing import Optional, Dict, List
 
 from libapi.config.parameters import (
