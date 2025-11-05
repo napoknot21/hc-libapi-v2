@@ -102,7 +102,7 @@ class Client :
             self.headers["AuthenticationToken"] = self.token
             self.is_auth = True
 
-            print("[+] Token and authentification loaded from cache")
+            print("\n[+] Token and authentification loaded from cache")
 
             return self.is_auth
 

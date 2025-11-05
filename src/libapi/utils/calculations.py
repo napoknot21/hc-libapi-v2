@@ -12,10 +12,12 @@ from libapi.utils.formatter import date_to_str
 
 def write_to_file (
     
-        id : str | int,
-        date : str | dt.datetime,
-        type : str,
+        id : Optional[str | int] = None,
+
+        date : Optional[str | dt.datetime | dt.date] = None,
         fund : Optional[str] = None,
+        type : Optional[str] = None,
+
         format : str = "%Y-%m-%d %H:%M:%S",
         file_abs_path : Optional[str] = None,
     
@@ -23,11 +25,14 @@ def write_to_file (
     """
     
     """
-    if not id :
+    if id is None :
+
+        print(f"\n[-] Not ID is specified. No caculation added")
         return
 
     date = date_to_str(date)
     fund = "HV" if fund is None else fund
+    type = "IM" if type is None else type
 
     CALCULATIONS_ABS_PATH = os.path.join(LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_LOGS_CALCULATIONS_BASENAME)
     file_abs_path = CALCULATIONS_ABS_PATH if file_abs_path is None else file_abs_path
@@ -49,9 +54,10 @@ def write_to_file (
     if file_exists == True :
 
         # Check if the date or ID already exists in the file
-        if has_duplicates(id, date, type, fund, file_abs_path=file_abs_path) :
-            raise ValueError("Error: Date or ID already exists in the file.")
-
+        if has_duplicates(id, date, fund, type, file_abs_path=file_abs_path) :
+            
+            print("\n[-] Error: Date or ID already exists in the file.")
+            return
 
     with open(file_abs_path, mode="a", newline="", encoding="utf-8") as f :
         
@@ -62,84 +68,22 @@ def write_to_file (
 
         writer.writerow(new_row)
 
-    print(f"New row added: {new_row}")
-
-
-"""
-def write_file_to_csv (file_abs_path : str = None, csv_abs_path : str = CALCULATION_ID_CSV_ABS_PATH) :
-    CALCULATIONS_ABS_PATH = os.path.join(LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_LOGS_CALCULATIONS_BASENAME)
-    file_abs_path = CALCULATIONS_ABS_PATH if file_abs_path is None else file_abs_path
-
-    # Check if the output CSV exists
-    if not os.path.exists(file_abs_path):
-        # Create the CSV file with headers
-        print("[*] Creating new CSV file with headers...")
-        empty_df = pl.DataFrame([
-            pl.Series(name="Date", values=[], dtype=pl.Utf8),
-            pl.Series(name="ID", values=[], dtype=pl.Int64),
-            pl.Series(name="Type", values=[], dtype=pl.Utf8),
-            pl.Series(name="Fundation", values=[], dtype=pl.Utf8),
-        ])
-        empty_df.write_csv(csv_abs_path)
-
-    # Prepare lists to store parsed lines
-    date_list = []
-    id_list = []
-    type_list = []
-    fund_list = []
-
-    # Read and parse the source file
-
-    with open(file_abs_path, 'r') as file:
-        for line in file:
-            date_str, id_str, type_str, fund_str = split_line(line)
-
-            # Optionally convert types
-            id_int = int(id_str)  # Convert ID to int
-            date_cleaned = date_str.strip()
-
-            # Append to lists
-            date_list.append(date_cleaned)
-            id_list.append(id_int)
-            type_list.append(type_str)
-            fund_list.append(fund_str)
-
-    # Create a Polars DataFrame
-    df = pl.DataFrame({
-        "Date": date_list,
-        "ID": id_list,
-        "Type": type_list,
-        "Fundation": fund_list,
-    })
-
-    # 1. Parse date strings into actual datetime objects
-    df = df.with_columns([
-        pl.col("Date").str.strptime(pl.Datetime, format="%Y-%m-%d %H:%M:%S")
-    ])
-
-    # 2. Sort using datetime column
-    df = df.sort("Date")
-
-    # 3. Format the Date column back to string AFTER sorting
-    df = df.with_columns([
-        pl.col("Date").dt.strftime("%Y-%m-%d %H:%M:%S").alias("Date")
-    ])
-
-    # Append to the existing CSV file
-    df.write_csv(CALCULATION_ID_CSV_ABS_PATH)
-    print(f"[*] Successfully appended {len(df)} rows to CSV.")
-"""
+    print(f"\n[+] New row added: {new_row}")
 
 
 def has_duplicates (
 
         id : str | int,
-        date : str | dt.datetime,
-        type : str,
+
+        date : Optional[str | dt.datetime | dt.date] = None,
         fund : Optional[str] = None,
+        type : Optional[str] = None,
+
+        format : str = "%Y-%m-%d",
+        
         schema_override : Optional[Dict] = None,
         specific_columns : Optional[List] = None,
-        format : str = "%Y-%m-%d",
+        
         file_abs_path : Optional[str] = None
     
     ) -> bool :
@@ -188,27 +132,31 @@ def has_duplicates (
 
 def read_id_from_file (
         
-        date : Optional[str | dt.date | dt.datetime],
-        type : str,
+        date : Optional[str | dt.date | dt.datetime] = None,
         fund : Optional[str] = None,
-        time_sensitive : bool = True,
-        schema_override : Optional[Dict] = None,
+        type : Optional[str] = None,
+
+        time_sensitive : bool = False,
+
         format : str = "%Y-%m-%d",
+        schema_override : Optional[Dict] = None,
         file_abs_path : Optional[str] = None,
 
     ) :
     """
     Returns the ID of calculationtype and fund
     """
+    date = date_to_str(date)
     fund = "HV" if fund is None else fund
-    verified_date_dt = date_to_str(date)
+    type = "IM" if type is None else type
 
     CALCULATIONS_ABS_PATH = os.path.join(LIBAPI_LOGS_DIR_ABS_PATH, LIBAPI_LOGS_CALCULATIONS_BASENAME)
     file_abs_path = CALCULATIONS_ABS_PATH if file_abs_path is None else file_abs_path
 
     schema_override = LIBAPI_LOGS_REQUESTS_COLUMNS if schema_override is None else schema_override
+    specific_cols = list(schema_override.keys())
 
-    dataframe = pl.read_csv(file_abs_path, schema_overrides=schema_override, columns=list(schema_override.keys()))
+    dataframe = pl.read_csv(file_abs_path, schema_overrides=schema_override, columns=specific_cols)
 
     print(dataframe)
     
@@ -219,18 +167,17 @@ def read_id_from_file (
 
     if time_sensitive == True :
         
-        date_obj = dt.datetime.strptime(verified_date_dt, format)
+        date_obj = dt.datetime.strptime(date, format)
         result = filtered.filter((pl.col("Date") == pl.lit(date_obj)))
 
     else :
 
         # Match by date only (ignore time component)
-        result = filtered.filter((pl.col("Date").dt.strftime(format) == verified_date_dt))
+        result = filtered.filter((pl.col("Date").dt.strftime(format) == date))
 
     # Return the ID if found
     if result.height > 0 :
 
-        print(result[0, "ID"])
         return result[0, "ID"]
 
     # If no match found

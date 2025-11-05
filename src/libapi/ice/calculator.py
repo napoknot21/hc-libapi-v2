@@ -12,6 +12,7 @@ from libapi.config.parameters import (
     ICE_URL_BIL_IM_CALC, ICE_URL_INVOKE_CALC
 )
 from libapi.utils.calculations import *
+from libapi.utils.results import *
 from libapi.utils.formatter import date_to_str
 
 class IceCalculator (Client) :
@@ -123,9 +124,12 @@ class IceCalculator (Client) :
     def get_post_im (
             
             self,
-            date : Optional[str | dt.datetime] = None,
-            ctpy_name : Optional[str] = None,
+
+            date : Optional[str | dt.date | dt.datetime] = None,
+            fund : Optional[str] = None,
             type : Optional[str] = None,
+
+            ctpy_name : Optional[str] = None,
         
         ) -> Optional[str] :
         """
@@ -141,47 +145,61 @@ class IceCalculator (Client) :
         """
         date = date_to_str(date)
         ctpy_name = "MorganStanley" if ctpy_name is None else ctpy_name
+        
         type = "IM" if type is None else type
+        fund = "HV" if fund is None else fund
 
         im = None
         start = time.time()
 
-        calculation_id = read_id_from_file(date, type) # FUnd HV by default
+        calculation_id = read_id_from_file(date, fund, type) # Fund HV by default
         
         if calculation_id is None :
 
-            print('[i] No calculation id found. Running calculation in ICE for date ', date)
-
+            print(f"\n[i] No calculation ID found. Running calculation in ICE for date {date}")
+            """
             calculation_dict = self.run_bilateral_im_calculation(date)
             calculation_id = calculation_dict.get("calculationId")
 
-            write_to_file(calculation_id, date, type)
+            write_to_file(calculation_id, date, type, fund)
+            """
             return None
             
+        calculation = load_cache_results_from_id(calculation_id)
+
+        if calculation is None :
+
+            print(f"\n[*] Requesting ICE for calculations results {date}")
+
+            calculation = self.get_calculation_results(calculation_id)
+            save_cache_results(calculation_id, calculation)
         
-        calculation = self.get_calculation_results(calculation_id)
         calc_res = calculation.get('results') if calculation is not None else None
 
         if calc_res is None :
 
-            print("[-] Error during fetch: calculation result is None")
+            print("\n[-] Error during extraction: calculation result is not complete")
             return calc_res
 
         for result in calc_res :
 
-            if result['group'] == ctpy_name :
-                im = result['postIm']
+            if result["group"] == ctpy_name :
+
+                im = result["postIm"]
         
-        print(f"[+] Retrieved Post-IM data in {time.time() - start:.2f} seconds")
+        print(f"\n[+] Find value for IM: {im}")
+        print(f"\n[+] Retrieved Post-IM data in {time.time() - start:.2f} seconds")
+
         return im
     
 
     def get_bilateral_im_calculation_by_ctpy (
         
             self,
-            date : str | dt.datetime | None = None,
-            fund : str = "HV",
-            calc_type : str = "IM"
+
+            date : Optional[str | dt.datetime | dt.date] = None,
+            fund : Optional[str] = None,
+            type : Optional[str] = None,
         
         ) -> Optional[List[Dict]] :
         """
@@ -196,9 +214,13 @@ class IceCalculator (Client) :
             list[dict] | None: List of result dictionaries for each counterparty.
         """
         date = date_to_str(date)
-        calculation_id = read_id_from_file(date, calc_type, fund=fund)
-
+        fund = "HV" if fund is None else fund
+        type = "IM" if type is None else type
+        
         start = time.time()
+        
+        # First check and load a ID from "cache"
+        calculation_id = read_id_from_file(date, fund, type) # Fund HV by default
 
         if not calculation_id :
 
@@ -207,9 +229,16 @@ class IceCalculator (Client) :
             calculation_dict = self.run_bilateral_im_calculation(date, fund=fund)
             calculation_id = calculation_dict.get("calculationId")
 
-            write_to_file(calculation_id, date, calc_type, fund=fund)
+            write_to_file(calculation_id, date, fund, type)
+            save_cache_results(calculation_id, calculation_dict)
 
-        calculation = self.get_calculation_results(calculation_id)
+        calculation = load_cache_results_from_id(calculation_id)
+
+        if calculation is None :
+
+            calculation = self.get_calculation_results(calculation_id)
+            save_cache_results(calculation_id, calculation_dict)
+        
         calc_res = calculation.get('results') if calculation is not None else None
 
         if calc_res is None :
@@ -222,7 +251,14 @@ class IceCalculator (Client) :
         return calc_res
     
 
-    def get_bilateral_im (self, date : str | dt.datetime = None, type : str = "IMT-ptf") :
+    def get_bilateral_im (
+            
+            self,
+            
+            date : Optional[str | dt.datetime | dt.date] = None,
+            type : Optional[str] = None
+        
+        ) :
         """
         Get bilateral IM calculation at the portfolio level (no ctptys split).
 
@@ -234,28 +270,44 @@ class IceCalculator (Client) :
             list[dict] | None: Result of the bilateral IM calculation.
         """
         date = date_to_str(date)
-        calculation_id = read_id_from_file(date , type)
+        type = "IM-ptf" if type is None else type 
 
         start = time.time()
+        
+        # Check the cache first
+        calculation_id = read_id_from_file(date, type=type) # Fund HV by default
 
         if not calculation_id :
 
-            print(f"[*] Running ICE calculation for date {date }")
-            
+            print(f"\n[*] Running ICE calculation for date {date}")
+            """
             calculation_dict = self.run_bilateral_im_calculation(date , ctptys=False)
             calculation_id = calculation_dict.get("calculationId")
 
             write_to_file(calculation_id, date, type=type)
+            save_cache_results(calculation_id, calculation_dict)
+            """
+            return None # test
+
+        # Check if the results are already stored as cache        
+        calculation = load_cache_results_from_id(calculation_id)
+
+        if calculation is None :
+
+            print(f"\n[*] Requesting ICE for calculations results {date}")
+
+            calculation = self.get_calculation_results(calculation_id)
+
+            save_cache_results(calculation_id, calculation)
         
-        calculation = self.get_calculation_results(calculation_id)
         calc_res = calculation.get('results') if calculation is not None else None
 
         if calc_res is None :
 
-            print("[-] Error: Calculation result is None")
+            print("\n[-] Error: Calculation result is None")
             return None
 
-        print(f"[+] Retrieved portfolio bilateral IM in {time.time() - start:.2f} seconds")
+        print(f"\n[+] Retrieved portfolio bilateral IM in {time.time() - start:.2f} seconds")
         
         return calc_res
 

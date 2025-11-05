@@ -41,6 +41,25 @@ def date_to_str (date : Optional[str | dt.datetime] = None, format : str = "%Y-%
     return date_obj.strftime(format)
 
 
+def str_to_date (date : Optional[str | dt.date | dt.datetime] = None, format : str = "%Y-%m-%d") -> dt.date :
+    """
+    
+    """
+    if date is None :
+        date_obj = dt.date.today()
+    
+    if isinstance (date, dt.datetime):
+        date_obj = date.date()
+
+    if isinstance(date, dt.date) :
+        date_obj = date
+    
+    if isinstance(date, str) :
+        date_obj = dt.datetime.strptime(date, format).date()
+    
+    return date_obj
+
+
 def time_to_str (time : Optional[str | dt.time] = None, format : str = "%H:%M:%S") -> str :
     """
     Convert a date or datetime object to a string in "YYYY-MM-DD" format.
