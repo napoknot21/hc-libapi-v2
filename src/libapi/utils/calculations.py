@@ -274,8 +274,14 @@ def get_most_recent_calculation (
     schema_overrides = LIBAPI_LOGS_REQUESTS_COLUMNS if schema_overrides is None else schema_overrides
     specific_cols = list(schema_overrides.keys()) if specific_cols is None else specific_cols
 
-    df = pl.read_csv(file_abs_path, schema_overrides=schema_overrides, columns=specific_cols)
+    try :
+        df = pl.read_csv(file_abs_path, schema_overrides=schema_overrides, columns=specific_cols)
 
+    except Exception as e :
+        
+        print(f"\n[-] Error during reading CSV file. {e}")
+        return None, None
+    
     filtered = df.filter((pl.col("Type") == type) & (pl.col("Fundation") == fund))
 
     if filtered.height == 0:

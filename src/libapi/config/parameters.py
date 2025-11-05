@@ -13,6 +13,7 @@ if ENV_PATH :
 
 
 # ----------- API Credentials -----------
+
 ICE_HOST=os.getenv("ICE_HOST")
 ICE_AUTH=os.getenv("ICE_AUTH")
 
@@ -21,6 +22,7 @@ ICE_PASSWORD=os.getenv("ICE_PASSWORD")
 
 
 # ----------- API Endpoints -----------
+
 ICE_URL_SEARCH_TRADES=os.getenv("ICE_URL_SEARCH_TRADES")
 ICE_URL_GET_TRADES=os.getenv("ICE_URL_GET_TRADES")
 ICE_URL_GET_CALC_RES=os.getenv("ICE_URL_GET_CALC_RES")
@@ -29,6 +31,10 @@ ICE_URL_TRADES_ADD=os.getenv("ICE_URL_TRADES_ADD")
 ICE_URL_INVOKE_CALC=os.getenv("ICE_URL_INVOKE_CALC")
 ICE_URL_GET_PORTFOLIOS=os.getenv("ICE_URL_GET_PORTFOLIOS")
 
+ICE_URL_INVOKE_LTAS=os.getenv("ICE_URL_INVOKE_LTAS")
+ICE_URL_GET_RESULTS_LTAS=os.getenv("ICE_URL_GET_RESULTS_LTAS")
+ICE_URL_SEARCH_LTAS=os.getenv("ICE_URL_SEARCH_LTAS")
+
 ICE_URL_QUERY_RESULTS=os.getenv("ICE_URL_QUERY_RESULTS")
 ICE_URL_INVOKE_DQUERY=os.getenv("ICE_URL_INVOKE_DQUERY")
 ICE_DATA_EQ_TICKER_TENOR=os.getenv("ICE_DATA_EQ_TICKER_TENOR")
@@ -36,6 +42,7 @@ ICE_DATA_EQ_TICKER=os.getenv("ICE_DATA_EQ_TICKER")
 
 
 # ----------- Pricers -----------
+
 #  FX endpoints  
 FX_PRICER_SOLVE_PATH=os.getenv("FX_PRICER_SOLVE_PATH")
 
@@ -144,6 +151,7 @@ COLUMNS_IN_PRICER={
 
 
 # ----------- LibAPI parameters / paths -----------
+
 LIBAPI_LOGS_DIR_ABS_PATH=os.getenv("LIBAPI_LOGS_DIR_ABS_PATH")
 LIBAPI_LOGS_REQUESTS_BASENAME=os.getenv("LIBAPI_LOGS_REQUESTS_BASENAME")
 LIBAPI_LOGS_PRICING_BASENAME=os.getenv("LIBAPI_LOGS_PRICING_BASENAME")
@@ -160,7 +168,6 @@ LIBAPI_CACHE_DIR_ABS_PATH=os.getenv("LIBAPI_CACHE_DIR_ABS_PATH")
 LIBAPI_CACHE_RESULTS_DIR_PATH=os.getenv("LIBAPI_CACHE_RESULTS_DIR_PATH")
 LIBAPI_CACHE_TOKEN_BASENAME=os.getenv("LIBAPI_CACHE_TOKEN_BASENAME")
 
-
 LIBAPI_LOGS_REQUESTS_COLUMNS = {
 
     "Date" : pl.Datetime,
@@ -170,13 +177,14 @@ LIBAPI_LOGS_REQUESTS_COLUMNS = {
 
 }
 
+
 # ----------- Portfolio Names / Groups -----------
+
 BOOK_NAMES_HV_ALL=os.getenv("BOOK_NAMES_HV_ALL")
 BOOK_NAMES_WR_ALL=os.getenv("BOOK_NAMES_WR_ALL")
 
 BOOK_NAMES_HV_SUBSET_N1=os.getenv("BOOK_NAMES_HV_SUBSET_N1")
 BOOK_NAMES_HV_SUBSET_N2=os.getenv("BOOK_NAMES_HV_SUBSET_N2")
-
 
 # Optional parameters (to avoid to convert every time the list)
 BOOK_NAMES_HV_LIST_ALL=list(BOOK_NAMES_HV_ALL.split(","))
@@ -187,6 +195,7 @@ BOOK_NAMES_HV_LIST_SUBSET_N2=list(BOOK_NAMES_HV_SUBSET_N2.split(","))
 
 
 # ----------- Instruments concurrencies -----------
+
 CCYS_ORDER=['EUR', 'USD', 'CHF', 'CAD', 'JPY', 'GBP', 'SEK', 'NOK']
 
 INSTRUMENTS_OVERRIDE={
@@ -206,7 +215,9 @@ INSTRUMENTS_OVERRIDE={
 
 }
 
+
 # ----------- Counterparties -----------
+
 BANK_COUNTERPARTY_NAME=os.getenv("BANK_COUNTERPARTY_NAME")
 
 COUNTERPARTIES=[
@@ -236,9 +247,6 @@ RISKS_UNDERLYING_ASSETS={
     "Basket" : {'EQ': ['Delta', 'Gamma', "Vega", "MarketData"]}
 
 }
-
-
-
 
 FREQUENCY_DATE_MAP = {
 

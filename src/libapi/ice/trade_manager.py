@@ -5,6 +5,7 @@ from typing import Optional, Dict, List
 from libapi.config.parameters import (
     ICE_HOST, ICE_AUTH, ICE_USERNAME, ICE_PASSWORD, # ICE credentials
     ICE_URL_SEARCH_TRADES, ICE_URL_GET_TRADES, ICE_URL_TRADES_ADD, ICE_URL_GET_PORTFOLIOS, # Endpoints
+    ICE_URL_INVOKE_LTAS, ICE_URL_SEARCH_LTAS, ICE_URL_GET_RESULTS_LTAS,
     BANK_COUNTERPARTY_NAME, BOOK_NAMES_HV_LIST_SUBSET_N1, BOOK_NAMES_HV_LIST_ALL # Names (banks, books, etc)
 )
 from libapi.ice.client import Client
@@ -81,8 +82,10 @@ class TradeManager (Client) :
             response (Dict | None) : Big dictionnary with a trade list, status and requeestID 
         """
         if books is None :
-            raise ValueError("[-] None name or void name for the book.")
-        
+            
+            print("\n[-] None or void name for the book.")
+            return None
+
         endpoint = ICE_URL_SEARCH_TRADES if endpoint is None else endpoint
         books = [books] if isinstance(books, str) else books
 
@@ -615,12 +618,119 @@ class TradeManager (Client) :
         return trade
     
 
+    # -------------------------------------------- LifeCycle Operations --------------------------------------------
+
+    
+    def get_ltas_search_results_by_date (
+            
+            self,
+            dates : Optional[str | List[str]] = None,
+            format : str  = "%Y-%m-%dT%H:%M:SZ",
+            type : str = "Knock-out",
+            childs : bool = True,
+            endpoint : Optional[str] = None
+            
+        ) -> Optional[Dict] :
+        """
+        """
+        #dates = date_to_str(dates, format)
+
+        endpoint = ICE_URL_SEARCH_LTAS if endpoint is None else endpoint
+
+        trade_leg_query = {
+
+            "type": "In",
+            "field": "Book",
+            "values": ["HV_EXO_HYBRID"]
+
+        }
 
 
+        type = ["Knock-out", "Payment"] if type is None else type
+
+        payload = {
+            "actionTypes": type,
+            "fromExecutionTimeUtc": dates,  # 'YYYY-MM-DD HH:MM:SS')
+            "includeChildActions": childs,
+            #"tradeLegIds": ["88275474001"],
+            "tradeLegQuery": trade_leg_query 
+        }
+
+        # Envoi de la requête avec le payload
+        response: Dict = self.post(
+            endpoint=endpoint,
+            json=payload
+        )
+
+        return response
+
+
+    def get_ltas_get_results_by_date (
+            
+            
+            self,
+            date : Optional[str] = None,
+            endpoint : Optional[str] = None
+
+
+        ) -> Optional[Dict] :
+        """
+        
+        
+        """
+        endpoint = "/IPA/Api/v1/Risk/GetLtasResults" if endpoint is None else endpoint
+
+        trade_leg_query = {
+
+            "type": "In",
+            "field": "Book",
+            "values": ["HV_EXO_HYBRID"]
+
+        }
+
+
+        type = "Knock-out" if type is None else type
+
+
+
+        payload = {
+            "executionId": str(123), 
+        }
+
+        # Envoi de la requête avec le payload
+        response: Dict = self.post(
+            endpoint=endpoint,
+            json=payload
+        )
+
+        return response
     
 
 
+    def get_ltas_invoke (self, date) :
+
+        """
+        
+        """
+        books = self.get_all_existing_hv_portfolios() + self.get_all_existing_wr_portfolios()
+
+        endpoint = "/IPA/Api/v1/InvokeLtas"
+        actions = "GeneralActions"# "Knock-out"
 
 
+        payload = {
 
+            "date" : date,
+            "includeSubPortfolios" : True,
+            "actionTypes" : actions, 
+            "bookNames" : books,
 
+        }
+
+        # Envoi de la requête avec le payload
+        response = self.post(
+            endpoint=endpoint,
+            json=payload
+        )
+
+        return response
