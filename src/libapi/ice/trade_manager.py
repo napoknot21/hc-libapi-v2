@@ -8,7 +8,7 @@ from typing import Optional, Dict, List
 from libapi.config.parameters import (
     ICE_HOST, ICE_AUTH, ICE_USERNAME, ICE_PASSWORD, # ICE credentials
     ICE_URL_SEARCH_TRADES, ICE_URL_GET_TRADES, ICE_URL_TRADES_ADD, ICE_URL_GET_PORTFOLIOS, # Endpoints
-    ICE_URL_INVOKE_LTAS, ICE_URL_SEARCH_LTAS, ICE_URL_GET_RESULTS_LTAS,
+    ICE_URL_INVOKE_LTAS, ICE_URL_SEARCH_LTAS, ICE_URL_GET_RESULTS_LTAS, ICE_URL_GET_AUDIT_TRAIL,
     BANK_COUNTERPARTY_NAME, BOOK_NAMES_HV_LIST_SUBSET_N1, BOOK_NAMES_HV_LIST_ALL # Names (banks, books, etc)
 )
 from libapi.ice.client import Client
@@ -174,6 +174,129 @@ class TradeManager (Client) :
 
         return response
 
+
+    def get_trades_from_books_by_creation_time (
+            
+            self,
+            books : List[str] | str,
+            dates : Optional[List[str | dt.datetime]] = None,
+            query_type : str = "And",
+            type : str = "In",
+            field_trade : str = "CreationTime",
+            field_book : str = "Book",
+            endpoint : Optional[str] = None
+        
+        ) -> Optional[Dict] :
+        """
+        
+        """
+        dates = [date_to_str(date) for date in dates] if isinstance(dates, list) else [date_to_str(dates)]
+        endpoint = ICE_URL_SEARCH_TRADES if endpoint is None else endpoint
+        books = [books] if isinstance(books, str) else (None if not isinstance(books, list) else books)
+
+        trade_date_query = {
+
+            "type" : type,
+            "field" : field_trade,
+            "values" : dates
+
+        }
+
+        book_names_query = {
+
+            "type" : type,
+            "field" : field_book,
+            "values" : books
+
+        }
+
+        payload = {
+
+            "query" : {
+
+                "type" : query_type,
+                "queries" : [
+
+                    trade_date_query,
+                    book_names_query
+
+                ]
+
+            }
+            
+        }
+
+        response = self.post(
+            
+            endpoint=endpoint,
+            json=payload
+
+        )
+
+        return response
+    
+
+    def get_trades_from_books_by_trade_ids (
+            
+            self,
+            books : List[str] | str,
+            trade_ids : Optional[List[str | dt.datetime]] = None,
+            query_type : str = "And",
+            type : str = "In",
+            field_trade : str = "tradeId",
+            field_book : str = "Book",
+            endpoint : Optional[str] = None
+        
+        ) -> Optional[Dict] :
+        """
+        
+        """
+        #dates = [date_to_str(date) for date in dates] if isinstance(dates, list) else [date_to_str(dates)]
+        trade_ids = [str(trade_id) for trade_id in trade_ids]
+        endpoint = ICE_URL_SEARCH_TRADES if endpoint is None else endpoint
+        books = [books] if isinstance(books, str) else (None if not isinstance(books, list) else books)
+
+        trade_date_query = {
+
+            "type" : type,
+            "field" : field_trade,
+            "values" : trade_ids
+
+        }
+
+        book_names_query = {
+
+            "type" : type,
+            "field" : field_book,
+            "values" : books
+
+        }
+
+        payload = {
+
+            "query" : {
+
+                "type" : query_type,
+                "queries" : [
+
+                    trade_date_query,
+                    book_names_query
+
+                ]
+
+            }
+            
+        }
+
+        response = self.post(
+            
+            endpoint=endpoint,
+            json=payload
+
+        )
+
+        return response
+    
 
     def get_info_trades_from_ids (
         
@@ -410,6 +533,69 @@ class TradeManager (Client) :
         return list(names)
 
 
+    def get_audit_trails (
+            
+            self,
+
+            from_date : Optional[str | dt.date | dt.datetime] = None,
+            to_date : Optional[str | dt.date | dt.datetime] = None,
+
+            actions : Optional[List[str]] = None,
+            books : Optional[List[str]] = None,
+
+            show_changes_from_inception : bool = True,
+            endpoint : Optional[str] = None
+        
+        ) -> Optional[Dict] :
+
+        """
+        Retrieve the audit trail for a specific trade ID.
+
+        Args:
+            trade_id (str): The ID of the trade for which to retrieve the audit trail.
+            endpoint (Optional[str], default=None): API endpoint to query. If None, uses the default ICE_URL_GET_TRADES constant.
+        
+        Returns:
+            Optional[Dict]: A dictionary containing the audit trail information for the specified trade, or None if retrieval fails.
+        """
+        endpoint = ICE_URL_GET_AUDIT_TRAIL if endpoint is None else endpoint
+        actions = ["LTAs"] if actions is None else actions
+
+        payload = {
+            "actions": actions,
+            "showChangesFromInception": show_changes_from_inception
+        }
+
+        # Dates
+        if from_date :
+            payload["fromDateTimeUtc"] = date_to_str(from_date, "%Y-%m-%d %H:%M:%S")
+        
+        if to_date :
+            payload["toDateTimeUtc"] = date_to_str(to_date, "%Y-%m-%d %H:%M:%S")
+    
+
+        if books :
+                
+            # Filter by books
+            books_list = [books] if isinstance(books, str) else books
+            
+            payload["tradesQuery"] = {
+                "type": "in",
+                "field": "Book",
+                "values": books_list
+            }
+
+
+        response : Dict = self.post(
+
+            endpoint=endpoint,
+            json=payload
+
+        )
+
+        return response
+
+
     # -------------------------------------------- Booking operations --------------------------------------------  TODO
 
 
@@ -448,18 +634,19 @@ class TradeManager (Client) :
             
             self,
             currency : str,
-            date : str | dt.datetime,
+            date : Optional[str | dt.datetime | dt.date],
             notional : float | int,
             book : str,
             counterparty : str,
-            bank : Optional[str] = None,
             direction : str = "Pay",
+            bank : Optional[str] = None,
             endpoint : Optional[str] = None
 
         ) :
         """
         
         """
+        date = date_to_str(date)
         bank = BANK_COUNTERPARTY_NAME if bank is None else bank
         endpoint = ICE_URL_TRADES_ADD if endpoint is None else endpoint
 
@@ -540,7 +727,7 @@ class TradeManager (Client) :
             description : str = "IM - api",
             trade_code : str = "IM",
             trade_name : str = "IM",
-            trade_type : str = "IMT",
+            trade_type : str = "IM",
             pay_recv : str = "Receive",
             asset_class :  str = "Cash",
             src_asset_class : str = "FX",

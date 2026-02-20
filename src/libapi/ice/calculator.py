@@ -7,7 +7,7 @@ from functools import lru_cache
 
 from libapi.ice.client import Client
 from libapi.config.parameters import (
-    ICE_AUTH, ICE_HOST, ICE_USERNAME, ICE_PASSWORD,
+    ICE_AUTH, ICE_HOST, ICE_USERNAME, ICE_PASSWORD, ICE_ALL_CTPY_NAMES, ICE_CTPY_NAME_MS,
     BOOK_NAMES_HV_LIST_SUBSET_N1, BOOK_NAMES_WR_LIST_ALL, BOOK_NAMES_HV_LIST_ALL,
     ICE_URL_BIL_IM_CALC, ICE_URL_INVOKE_CALC
 )
@@ -68,13 +68,17 @@ class IceCalculator (Client) :
     
     # -------------------------------------------------- IM Bilateral -------------------------------------------------- #
 
-
+    # Calculation function (internal)
     def run_bilateral_im_calculation (
         
             self,
-            date: Optional[str | dt.datetime] = None,
+            
+            date : Optional[str | dt.datetime] = None,
             fund : Optional[str] = None,
+            
             ctptys : bool = True,
+
+            ctpy_name : Optional[List[str]] = None,
             endpoint : Optional[str] = None
         
         ) -> Optional[Dict]:
@@ -91,6 +95,7 @@ class IceCalculator (Client) :
         """
         verified_date = date_to_str(date)
         fund = "HV" if fund is None else fund
+
         endpoint = ICE_URL_BIL_IM_CALC if endpoint is None else endpoint
 
         body = {
@@ -108,7 +113,9 @@ class IceCalculator (Client) :
         }
 
         if ctptys :
-            body["counterPartyNames"] = ["GOLDMAN SACHS BANK EUROPE SE", "MORGAN STANLEY EUROPE SE", "European Depositary Bank", "SAXO BANK A/S", "UBS AG"]
+
+            ctpy_name = ICE_ALL_CTPY_NAMES if ctpy_name is None else ctpy_name
+            body["counterPartyNames"] = ctpy_name
 
         # Try with post (default GET)
         response = self.post(
@@ -121,76 +128,7 @@ class IceCalculator (Client) :
         return response
 
 
-    def get_post_im_by_ctpy (
-            
-            self,
-
-            date : Optional[str | dt.date | dt.datetime] = None,
-            fund : Optional[str] = None,
-            type : Optional[str] = None,
-
-            ctpy_name : Optional[str] = None,
-        
-        ) -> Optional[str] :
-        """
-        Get bilateral IM calculation results for all counterparties.
-
-        Args:
-            date (datetime): The date for which to run/retrieve the calculation.
-            fund (str): The fund name.
-            type (str): Calculation type label.
-
-        Returns:
-            list[dict] | None: List of result dictionaries for each counterparty.
-        """
-        date = date_to_str(date)
-        ctpy_name = "MORGAN STANLEY EUROPE SE" if ctpy_name is None else ctpy_name
-        
-        type = "IM" if type is None else type
-        fund = "HV" if fund is None else fund
-
-        im = None
-        start = time.time()
-
-        calculation_id = read_id_from_file(date, fund, type) # Fund HV by default
-        
-        if calculation_id is None :
-
-            print(f"\n[i] No calculation ID found. Running calculation in ICE for date {date}")
-            
-            calculation_dict = self.run_bilateral_im_calculation(date)
-            calculation_id = calculation_dict.get("calculationId")
-
-            write_to_file(calculation_id, date, type, fund)
-            
-        calculation = load_cache_results_from_id(calculation_id)
-
-        if calculation is None :
-
-            print(f"\n[*] Requesting ICE for calculations results {date}")
-
-            calculation = self.get_calculation_results(calculation_id)
-            save_cache_results(calculation_id, calculation)
-        
-        calc_res = calculation.get('results') if calculation is not None else None
-
-        if calc_res is None :
-
-            print("\n[-] Error during extraction: calculation result is not complete")
-            return calc_res
-
-        for result in calc_res :
-
-            if result["group"] == ctpy_name :
-
-                im = result["postIm"]
-        
-        print(f"\n[+] Find value for IM: {im}")
-        print(f"\n[+] Retrieved Post-IM data in {time.time() - start:.2f} seconds")
-
-        return im
-    
-
+    # Calc and Get main function (external)
     def get_bilateral_im_calculation_all_ctpy (
         
             self,
@@ -212,6 +150,7 @@ class IceCalculator (Client) :
             list[dict] | None: List of result dictionaries for each counterparty.
         """
         date = date_to_str(date)
+
         fund = "HV" if fund is None else fund
         type = "IM" if type is None else type
         
@@ -250,11 +189,61 @@ class IceCalculator (Client) :
         return calc_res
     
 
-    def get_bilateral_im (
+    # Calc and Get IM (external)
+    def get_post_im_by_ctpy (
+            
+            self,
+
+            date : Optional[str | dt.date | dt.datetime] = None,
+            fund : Optional[str] = None,
+            type : Optional[str] = None,
+
+            ctpy_name : Optional[str] = None,
+        
+        ) -> Optional[str] :
+        """
+        Get bilateral IM calculation results for all counterparties.
+
+        Args:
+            date (datetime): The date for which to run/retrieve the calculation.
+            fund (str): The fund name.
+            type (str): Calculation type label.
+
+        Returns:
+            list[dict] | None: List of result dictionaries for each counterparty.
+        """
+        date = date_to_str(date)
+
+        fund = "HV" if fund is None else fund
+        type = "IM" if type is None else type
+
+        im = None
+        calc_res = self.get_bilateral_im_calculation_all_ctpy(date, fund, type)
+
+        if calc_res is None :
+            
+            print("[-] Error during fetching, calculation is None...")
+            return None
+
+        ctpy_name = ICE_CTPY_NAME_MS if ctpy_name is None else ctpy_name
+
+        for result in calc_res :
+
+            if result["group"] == ctpy_name :
+                im = result["postIm"]
+        
+        print(f"\n[+] Find value for IM: {im}")
+        
+        return im
+    
+
+    # Calc and Get Ptf-IM (external)
+    def get_portfolio_bilateral_im (
             
             self,
             
             date : Optional[str | dt.datetime | dt.date] = None,
+            fund : Optional[str] = None,
             type : Optional[str] = None
         
         ) :
@@ -269,40 +258,18 @@ class IceCalculator (Client) :
             list[dict] | None: Result of the bilateral IM calculation.
         """
         date = date_to_str(date)
+        
         type = "IM-ptf" if type is None else type 
+        fund = "HV" if fund is None else fund
 
-        start = time.time()
+        calc_res = self.get_bilateral_im_calculation_all_ctpy(date, fund, type)
         
-        # Check the cache first
-        calculation_id = read_id_from_file(date, type=type) # Fund HV by default
-
-        if not calculation_id :
-
-            print(f"\n[*] Running ICE calculation for date {date}")
-            
-            calculation_dict = self.run_bilateral_im_calculation(date , ctptys=False)
-            calculation_id = calculation_dict.get("calculationId")
-
-            write_to_file(calculation_id, date, type=type)
-
-        # Check if the results are already stored as cache        
-        calculation = load_cache_results_from_id(calculation_id)
-
-        if calculation is None :
-
-            print(f"\n[*] Requesting ICE for calculations results {date}")
-
-            calculation = self.get_calculation_results(calculation_id)
-            save_cache_results(calculation_id, calculation)
-        
-        calc_res = calculation.get('results') if calculation is not None else None
-
         if calc_res is None :
 
             print("\n[-] Error: Calculation result is None")
             return None
 
-        print(f"\n[+] Retrieved portfolio bilateral IM in {time.time() - start:.2f} seconds")
+        print(f"\n[+] Retrieved portfolio bilateral found")
         
         return calc_res
 
@@ -310,9 +277,16 @@ class IceCalculator (Client) :
     # -------------------------------------------------- MV and Greeks -------------------------------------------------- #
 
 
-    def run_mv_n_greeks (self, date : Optional[str | dt.datetime] = None, book_names : Optional[List[str]] = None, endpoint : Optional[str] = None) -> Optional[dict] :
+    def run_mv_n_greeks (
+        
+            self,
+            date : Optional[str | dt.datetime | dt.date] = None,
+            book_names : Optional[List[str]] = None,
+            endpoint : Optional[str] = None
+        
+        ) -> Optional[Dict] :
         """
-        Trigger MV and Greeks calculation.
+        Trigger Market Value and Greeks calculation.
 
         Args:
             date (str | datetime): If provided, run for EOD date.
@@ -518,6 +492,7 @@ class IceCalculator (Client) :
 
         return calculation
     
+
     # -------------------------------------------------- Cache -------------------------------------------------- #
 
     @lru_cache(maxsize=128)
