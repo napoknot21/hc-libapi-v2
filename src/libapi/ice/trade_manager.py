@@ -894,7 +894,6 @@ class TradeManager (Client) :
         )
 
         return response
-    
 
 
     def get_ltas_invoke (self, date) :
