@@ -514,21 +514,19 @@ class TradeManager (Client) :
         endpoint = ICE_URL_GET_PORTFOLIOS if endpoint is None else endpoint
 
         response = self.get_all_existing_portfolios_raw(endpoint)
-
         names = set()
-        for portfolio in response :
 
+        formated_prefix = str(prefix).upper().strip() if prefix else None
+
+        for _, portfolio in enumerate(response) :
+            
             name = portfolio.get("portfolioName")
 
-            if prefix is None or prefix == "" :
+            if not formated_prefix :
                 names.add(name)
             
-            else :
-                
-                formated_prefix = str(prefix).upper().strip()
-
-                if str(name).startswith(formated_prefix) :
-                    names.add(name)
+            elif str(name).strip().upper().startswith(str(formated_prefix)) :
+                names.add(name)
 
         return list(names)
 
