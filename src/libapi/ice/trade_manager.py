@@ -12,7 +12,7 @@ from libapi.config.parameters import (
     BANK_COUNTERPARTY_NAME, BOOK_NAMES_HV_LIST_SUBSET_N1, BOOK_NAMES_HV_LIST_ALL # Names (banks, books, etc)
 )
 from libapi.ice.client import Client
-from libapi.utils.formatter import date_to_str
+from libapi.utils.formatter import date_to_str, datetime_to_str
 
 
 class TradeManager (Client) :
@@ -541,7 +541,7 @@ class TradeManager (Client) :
             actions : Optional[List[str]] = None,
             books : Optional[List[str]] = None,
 
-            show_changes_from_inception : bool = True,
+            show_changes_from_inception : bool = False,
             endpoint : Optional[str] = None
         
         ) -> Optional[Dict] :
@@ -557,30 +557,33 @@ class TradeManager (Client) :
             Optional[Dict]: A dictionary containing the audit trail information for the specified trade, or None if retrieval fails.
         """
         endpoint = ICE_URL_GET_AUDIT_TRAIL if endpoint is None else endpoint
-        actions = ["LTAs"] if actions is None else actions
+        books = BOOK_NAMES_HV_LIST_ALL if books is None else books
+        actions = ["Insert", "Update", "Delete", "LTAs"] if actions is None else actions
 
         payload = {
+
             "actions": actions,
             "showChangesFromInception": show_changes_from_inception
+
         }
 
         # Dates
         if from_date :
-            payload["fromDateTimeUtc"] = date_to_str(from_date, "%Y-%m-%d %H:%M:%S")
+            payload["fromDateTimeUtc"] = datetime_to_str(from_date)
         
         if to_date :
-            payload["toDateTimeUtc"] = date_to_str(to_date, "%Y-%m-%d %H:%M:%S")
+            payload["toDateTimeUtc"] = datetime_to_str(to_date)
     
 
         if books :
                 
             # Filter by books
-            books_list = [books] if isinstance(books, str) else books
+            books = [books] if isinstance(books, str) else books
             
             payload["tradesQuery"] = {
                 "type": "in",
                 "field": "Book",
-                "values": books_list
+                "values": books
             }
 
 

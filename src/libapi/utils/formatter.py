@@ -87,3 +87,63 @@ def check_date_format (date_str: str, format : str = "%Y-%m-%d") -> Optional[dt.
     except Exception :
         
         return None
+    
+
+def datetime_to_str (date : Optional[str | dt.datetime | dt.date] = None, format : str = "%Y-%m-%d %H:%M:%S") -> Optional[str] :
+    """
+    
+    """
+    date_obj = None
+
+    if date is None :
+        date_obj = dt.datetime.now(dt.timezone.utc)
+
+    elif isinstance(date, dt.datetime) :
+        date_obj = date
+
+    elif isinstance(date, dt.date) :
+        date_obj = dt.datetime.combine(date, dt.time(0, 0, 0))
+
+    elif isinstance(date, str) :
+
+        try :
+            date_obj = dt.datetime.strptime(date, format)
+        
+        except ValueError :
+            
+            print(f"Invalid datetime format: '{date}'. Expected {format}")
+            return None
+        
+    date_obj = date_obj.strftime(format)
+    
+    return date_obj
+
+
+def str_to_datetime (date : Optional[str | dt.datetime | dt.date] = None, format : str = "%Y-%m-%d %H:%M:%S") -> Optional[dt.datetime] :
+    """
+    """
+    date_obj = None
+
+    if date is None :
+        date_obj = dt.datetime.now(dt.timezone.utc)
+
+    elif isinstance(date, dt.datetime):
+        date_obj = date
+
+    elif isinstance(date, dt.date):
+        date_obj = dt.datetime.combine(date, dt.time(0, 0, 0))
+
+    elif isinstance(date, str) :
+
+        try :
+            date_obj = dt.datetime.strptime(date, format)
+        
+        except ValueError :
+            
+            print(f"Invalid datetime format: '{date}'. Expected {format}")
+            return None
+
+    if date_obj.tzinfo is None :
+        date_obj = date_obj.replace(tzinfo=dt.timezone.utc)
+
+    return date_obj
