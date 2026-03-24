@@ -341,7 +341,9 @@ class Client :
             calculation_details : str = "Yes",
             results_home_ccy : str = "Yes",
             results_portf_ccy : str = "No",
-            endpoint : Optional[str] = None
+            endpoint : Optional[str] = None,
+
+            loopback : int = 5,
 
         ) -> Optional[Dict] :
         """
@@ -354,6 +356,11 @@ class Client :
         Returns:
             dict | None: Calculation results if available.
         """
+        if loopback <= 0 :
+            
+            print(f"\n[-] get_calcultion_results failed after all retries | id = {calculation_id}")
+            return None
+
         endpoint = ICE_URL_GET_CALC_RES if endpoint is None else endpoint
 
         payload = {
@@ -365,12 +372,24 @@ class Client :
 
         }
 
-        response = self.get(
+        try :
 
-            endpoint=endpoint,
-            json=payload
+            response = self.get(
 
-        )
+                endpoint=endpoint,
+                json=payload
+
+            )
+
+            if response is None :
+
+                print(f"[!] Retrying query for results calculations...Null result")
+                return self.get_calculation_results(calculation_id, calculation_details, results_home_ccy, results_portf_ccy, endpoint, loopback - 1)
+
+        except Exception as e :
+
+            print(f"[!] Retrying query for results calculations after a exception...")
+            return self.get_calculation_results(calculation_id, calculation_details, results_home_ccy, results_portf_ccy, endpoint, loopback - 1)
 
         return response
     
