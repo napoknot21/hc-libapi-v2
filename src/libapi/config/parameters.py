@@ -54,7 +54,7 @@ ICE_ALL_CTPY_NAMES = [
 
     ICE_CTPY_NAME_GS,
     ICE_CTPY_NAME_MS,
-    ICE_CTPY_NAME_DEPO,
+    #ICE_CTPY_NAME_DEPO,
     ICE_CTPY_NAME_SAXO,
     ICE_CTPY_NAME_UBS,
     ICE_CTPY_NAME_LM
@@ -216,7 +216,7 @@ BOOK_NAMES_HV_LIST_SUBSET_N2=list(BOOK_NAMES_HV_SUBSET_N2.split(","))
 
 # ----------- Instruments concurrencies -----------
 
-CCYS_ORDER=['EUR', 'USD', 'CHF', 'CAD', 'JPY', 'GBP', 'SEK', 'NOK']
+CCYS_ORDER=['EUR', 'USD', 'CHF', 'AUD', 'CAD', 'JPY', 'GBP', 'SEK', 'NOK']
 
 INSTRUMENTS_OVERRIDE={
 
