@@ -373,6 +373,8 @@ class Client :
         }
 
         try :
+            
+            print(f"\n[*] Querying calculation results... | id = {calculation_id} | loopback = {loopback}")
 
             response = self.get(
 
@@ -381,14 +383,14 @@ class Client :
 
             )
 
-            if response is None :
+            if response is None or response.get("status") == "Failure" :
 
-                print(f"[!] Retrying query for results calculations...Null result")
+                print(f"\n[!] Retrying query for results calculations...Null result")
                 return self.get_calculation_results(calculation_id, calculation_details, results_home_ccy, results_portf_ccy, endpoint, loopback - 1)
 
         except Exception as e :
 
-            print(f"[!] Retrying query for results calculations after a exception...")
+            print(f"\n[!] Retrying query for results calculations after a exception...")
             return self.get_calculation_results(calculation_id, calculation_details, results_home_ccy, results_portf_ccy, endpoint, loopback - 1)
 
         return response
